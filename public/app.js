@@ -378,7 +378,86 @@ async function openAuditDrawer(transactionId) {
     const audit = res.data;
 
     const summary = audit.retry_schedule_summary || {};
-    const isHalted = summary.retries_remaining === 0;
+    const isRecovered = summary.is_recovered;
+    const isHalted = summary.is_halted;
+
+    let scheduleCardHtml = '';
+
+    if (isRecovered) {
+      scheduleCardHtml = `
+        <div style="margin-bottom: 24px; background: rgba(16, 185, 129, 0.08); padding: 16px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.25);">
+          <h4 style="color: var(--emerald); font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+            <span><i class="fa-solid fa-circle-check"></i> Revenue Successfully Recovered</span>
+            <span class="badge badge-recovered">RECOVERED</span>
+          </h4>
+          <div style="font-size: 13px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; color: var(--text-main);">
+            <div>
+              <div style="font-size: 11px; color: var(--text-muted);">Attempts Used</div>
+              <strong>Attempt 2 of 4 (1 Failure + 1 Retry)</strong>
+            </div>
+            <div>
+              <div style="font-size: 11px; color: var(--text-muted);">Future Retries Needed</div>
+              <strong style="color: var(--emerald);">0 (Payment Complete)</strong>
+            </div>
+            <div style="grid-column: span 2; margin-top: 4px;">
+              <div style="font-size: 11px; color: var(--text-muted);">Successful Strategy Window</div>
+              <span style="font-size: 12px; color: var(--text-muted);">${summary.retry_strategy_window || 'N/A'}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (isHalted) {
+      scheduleCardHtml = `
+        <div style="margin-bottom: 24px; background: rgba(244, 63, 94, 0.08); padding: 16px; border-radius: 8px; border: 1px solid rgba(244, 63, 94, 0.25);">
+          <h4 style="color: var(--rose); font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+            <span><i class="fa-solid fa-shield-halved"></i> Compliant Restraint Executed</span>
+            <span class="badge badge-halted">HALTED</span>
+          </h4>
+          <div style="font-size: 13px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; color: var(--text-main);">
+            <div>
+              <div style="font-size: 11px; color: var(--text-muted);">Attempts Used</div>
+              <strong>Attempt 1 of 4 (Halted Instantly)</strong>
+            </div>
+            <div>
+              <div style="font-size: 11px; color: var(--text-muted);">Retries Allowed</div>
+              <strong style="color: var(--rose);">0 Retries Allowed</strong>
+            </div>
+            <div style="grid-column: span 2; margin-top: 4px;">
+              <div style="font-size: 11px; color: var(--text-muted);">Restraint Reason</div>
+              <span style="font-size: 12px; color: var(--text-muted);">${summary.retry_strategy_window || 'N/A'}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      const nextDate = summary.next_retry_scheduled_at ? new Date(summary.next_retry_scheduled_at).toLocaleString() : 'N/A';
+      scheduleCardHtml = `
+        <div style="margin-bottom: 24px; background: rgba(2, 132, 199, 0.08); padding: 16px; border-radius: 8px; border: 1px solid rgba(2, 132, 199, 0.25);">
+          <h4 style="color: #38bdf8; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+            <span><i class="fa-solid fa-clock-rotate-left"></i> Ongoing Retry Schedule & Limits</span>
+            <span class="badge badge-pending">${summary.retries_remaining} Retries Left</span>
+          </h4>
+          <div style="font-size: 13px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; color: var(--text-main);">
+            <div>
+              <div style="font-size: 11px; color: var(--text-muted);">Attempts Completed</div>
+              <strong>Attempt ${summary.attempts_used || 1} of ${summary.max_attempts_allowed || 4}</strong>
+            </div>
+            <div>
+              <div style="font-size: 11px; color: var(--text-muted);">Retries Allowed</div>
+              <strong style="color: var(--emerald);">${summary.retries_remaining} Retries Allowed</strong>
+            </div>
+            <div style="grid-column: span 2; margin-top: 4px;">
+              <div style="font-size: 11px; color: var(--text-muted);">Next Retry Scheduled At</div>
+              <strong style="color: #38bdf8;">${nextDate}</strong>
+            </div>
+            <div style="grid-column: span 2; margin-top: 2px;">
+              <div style="font-size: 11px; color: var(--text-muted);">Strategy Window</div>
+              <span style="font-size: 12px; color: var(--text-muted);">${summary.retry_strategy_window || 'N/A'}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
     drawerContent.innerHTML = `
       <!-- Model Decision & Strategy Box -->
@@ -389,31 +468,8 @@ async function openAuditDrawer(transactionId) {
         <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;"><em>"${audit.recovery_action?.reasoning}"</em></p>
       </div>
 
-      <!-- Retries Remaining & Next Retry Schedule Card -->
-      <div style="margin-bottom: 24px; background: rgba(2, 132, 199, 0.08); padding: 16px; border-radius: 8px; border: 1px solid rgba(2, 132, 199, 0.25);">
-        <h4 style="color: #38bdf8; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
-          <span><i class="fa-solid fa-clock-rotate-left"></i> Retry Schedule & Limits</span>
-          <span class="badge ${isHalted ? 'badge-halted' : 'badge-pending'}">${summary.retries_remaining} Retries Left</span>
-        </h4>
-        <div style="font-size: 13px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; color: var(--text-main);">
-          <div>
-            <div style="font-size: 11px; color: var(--text-muted);">Current Attempt</div>
-            <strong>Attempt ${summary.attempt_number || 1} of ${summary.max_attempts_allowed || 4}</strong>
-          </div>
-          <div>
-            <div style="font-size: 11px; color: var(--text-muted);">Retries Remaining</div>
-            <strong style="color: ${isHalted ? 'var(--rose)' : 'var(--emerald)'};">${summary.retries_remaining} Remaining</strong>
-          </div>
-          <div style="grid-column: span 2; margin-top: 4px;">
-            <div style="font-size: 11px; color: var(--text-muted);">Next Retry Scheduled At</div>
-            <strong style="color: #38bdf8;">${new Date(summary.next_retry_scheduled_at).toLocaleString()}</strong>
-          </div>
-          <div style="grid-column: span 2; margin-top: 2px;">
-            <div style="font-size: 11px; color: var(--text-muted);">Strategy Window</div>
-            <span style="font-size: 12px; color: var(--text-muted);">${summary.retry_strategy_window || 'N/A'}</span>
-          </div>
-        </div>
-      </div>
+      <!-- Execution Status Card -->
+      ${scheduleCardHtml}
 
       <h4 style="margin-bottom: 16px;"><i class="fa-solid fa-timeline"></i> Step-by-Step Execution Lifecycle</h4>
       <div class="timeline">

@@ -29,30 +29,33 @@ export const getAuditTrail = async (req, res) => {
     const t2 = new Date(t1.getTime() + 60 * 1000); // AI diagnosis 1 minute after failure
 
     const actionTaken = recoveryAction ? recoveryAction.action_taken : 'retry_now';
-    const isHaltedOrCompleted = 
+    const isRecovered = recoveryAction?.outcome === 'recovered';
+    const isHalted = 
       actionTaken === 'no_action_respect_revoke' || 
-      actionTaken === 'stop_max_attempts_reached' ||
-      recoveryAction?.outcome === 'recovered';
+      actionTaken === 'stop_max_attempts_reached';
 
-    // 2. Calculate Attempt Numbers & Retries Allowed (Max 4 attempts: 1 Initial + 3 Retries)
-    const attemptsCompleted = transaction.attempt_number || 1;
+    // 2. Calculate Attempts Used & Retries Remaining
+    let attemptsUsed = transaction.attempt_number || 1;
+    if (isRecovered) {
+      attemptsUsed = 2; // 1 Initial Failure + 1 Successful AI Retry
+    }
     const maxAttemptsAllowed = 4; // NPCI UPI Hard Cap
-    let retriesRemaining = isHaltedOrCompleted ? 0 : Math.max(0, maxAttemptsAllowed - attemptsCompleted);
+    let retriesRemaining = (isRecovered || isHalted) ? 0 : Math.max(0, maxAttemptsAllowed - attemptsUsed);
 
     // Compute next retry timestamp relative to t1 ONLY if active pending retries exist
     let t3 = null;
-    let nextRetryFormatted = 'N/A — Execution Halted';
+    let nextRetryISO = null;
 
-    if (!isHaltedOrCompleted) {
+    if (!isRecovered && !isHalted) {
       let delayHours = 24;
       if (actionTaken === 'retry_delayed') delayHours = 72; // 3 days (payday window alignment)
       else if (actionTaken === 'retry_now') delayHours = 2; // 2 hours (transient network recovery)
       else if (actionTaken === 'prompt_update_card') delayHours = 24; // 1 day
 
       t3 = new Date(t1.getTime() + delayHours * 3600 * 1000);
-      nextRetryFormatted = t3.toISOString();
-    } else if (recoveryAction?.outcome === 'recovered') {
-      nextRetryFormatted = 'Completed — Payment Recovered';
+      nextRetryISO = t3.toISOString();
+    } else if (isRecovered) {
+      t3 = new Date(t1.getTime() + 24 * 3600 * 1000); // Recovery executed 1 day after failure
     }
 
     let retryStrategyWindow = 'Standard Spaced Window (~24h)';
@@ -84,7 +87,7 @@ export const getAuditTrail = async (req, res) => {
         error_code: transaction.error_code,
         error_reason: transaction.error_reason,
         error_source: transaction.error_source,
-        attempts_completed: attemptsCompleted
+        attempts_used: 1
       }
     });
 
@@ -103,7 +106,7 @@ export const getAuditTrail = async (req, res) => {
           action_taken: recoveryAction.action_taken,
           reasoning: recoveryAction.reasoning,
           retries_remaining: retriesRemaining,
-          next_retry_scheduled_at: nextRetryFormatted,
+          next_retry_scheduled_at: nextRetryISO,
           retry_strategy_window: retryStrategyWindow
         }
       });
@@ -113,17 +116,17 @@ export const getAuditTrail = async (req, res) => {
         step: 3,
         event: 'RECOVERY_OUTCOME',
         timestamp: t3 ? t3.toISOString() : t2.toISOString(),
-        title: recoveryAction.outcome === 'recovered' ? 'Revenue Recovered' : 'Recovery Execution Status',
-        description: recoveryAction.outcome === 'recovered'
-          ? `Final Outcome: RECOVERED`
-          : isHaltedOrCompleted
+        title: isRecovered ? 'Revenue Recovered (Attempt 2 of 4)' : 'Recovery Execution Status',
+        description: isRecovered
+          ? `AI Intervention Retry Succeeded: INR ${(transaction.amount / 100).toFixed(2)} recovered.`
+          : isHalted
             ? `Execution Status: HALTED (${retryStrategyWindow})`
             : `Next retry scheduled for ${t3 ? t3.toLocaleString() : 'N/A'} (${retryStrategyWindow})`,
         details: {
           outcome: recoveryAction.outcome || 'pending_execution',
-          scheduled_retry_at: nextRetryFormatted,
+          scheduled_retry_at: nextRetryISO,
           retries_remaining: retriesRemaining,
-          next_retry_scheduled_at: nextRetryFormatted
+          next_retry_scheduled_at: nextRetryISO
         }
       });
     }
@@ -134,18 +137,20 @@ export const getAuditTrail = async (req, res) => {
         customer_id: transaction.customer_id,
         transaction,
         retry_schedule_summary: {
-          attempts_completed: attemptsCompleted,
+          attempts_used: attemptsUsed,
           max_attempts_allowed: maxAttemptsAllowed,
           retries_remaining: retriesRemaining,
-          next_retry_scheduled_at: nextRetryFormatted,
-          retry_strategy_window: retryStrategyWindow
+          next_retry_scheduled_at: nextRetryISO,
+          retry_strategy_window: retryStrategyWindow,
+          is_recovered: isRecovered,
+          is_halted: isHalted
         },
         recovery_action: recoveryAction ? {
           predicted_category: recoveryAction.predicted_category,
           confidence_score: recoveryAction.confidence_score,
           action_taken: recoveryAction.action_taken,
           reasoning: recoveryAction.reasoning,
-          scheduled_retry_at: nextRetryFormatted,
+          scheduled_retry_at: nextRetryISO,
           outcome: recoveryAction.outcome,
           created_at: t2.toISOString()
         } : null,
