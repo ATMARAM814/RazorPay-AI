@@ -377,34 +377,59 @@ async function openAuditDrawer(transactionId) {
     const res = await fetch(`/api/audit/${transactionId}`).then(r => r.json());
     const audit = res.data;
 
-    if (!audit || !audit.timeline) {
-      drawerContent.innerHTML = `<p class="text-muted">No timeline data available for this transaction.</p>`;
-      return;
-    }
+    const summary = audit.retry_schedule_summary || {};
+    const isHalted = summary.retries_remaining === 0;
 
     drawerContent.innerHTML = `
+      <!-- Model Decision & Strategy Box -->
       <div style="margin-bottom: 20px; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
-        <h4 style="color: var(--primary); margin-bottom: 8px;">Model Decision & Rationale</h4>
-        <p><strong>Predicted Cause:</strong> ${formatCategory(audit.recovery_action?.predicted_category)}</p>
-        <p><strong>Decided Action:</strong> <code>${audit.recovery_action?.action_taken}</code></p>
+        <h4 style="color: var(--primary); margin-bottom: 8px;"><i class="fa-solid fa-brain"></i> Model Decision & Rationale</h4>
+        <p style="font-size: 13px;"><strong>Predicted Cause:</strong> ${formatCategory(audit.recovery_action?.predicted_category)}</p>
+        <p style="font-size: 13px;"><strong>Decided Action:</strong> <code>${audit.recovery_action?.action_taken}</code></p>
         <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;"><em>"${audit.recovery_action?.reasoning}"</em></p>
       </div>
 
-      <h4 style="margin-bottom: 16px;">Step-by-Step Execution Lifecycle</h4>
+      <!-- Retries Remaining & Next Retry Schedule Card -->
+      <div style="margin-bottom: 24px; background: rgba(2, 132, 199, 0.08); padding: 16px; border-radius: 8px; border: 1px solid rgba(2, 132, 199, 0.25);">
+        <h4 style="color: #38bdf8; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+          <span><i class="fa-solid fa-clock-rotate-left"></i> Retry Schedule & Limits</span>
+          <span class="badge ${isHalted ? 'badge-halted' : 'badge-pending'}">${summary.retries_remaining} Retries Left</span>
+        </h4>
+        <div style="font-size: 13px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; color: var(--text-main);">
+          <div>
+            <div style="font-size: 11px; color: var(--text-muted);">Current Attempt</div>
+            <strong>Attempt ${summary.attempt_number || 1} of ${summary.max_attempts_allowed || 4}</strong>
+          </div>
+          <div>
+            <div style="font-size: 11px; color: var(--text-muted);">Retries Remaining</div>
+            <strong style="color: ${isHalted ? 'var(--rose)' : 'var(--emerald)'};">${summary.retries_remaining} Remaining</strong>
+          </div>
+          <div style="grid-column: span 2; margin-top: 4px;">
+            <div style="font-size: 11px; color: var(--text-muted);">Next Retry Scheduled At</div>
+            <strong style="color: #38bdf8;">${new Date(summary.next_retry_scheduled_at).toLocaleString()}</strong>
+          </div>
+          <div style="grid-column: span 2; margin-top: 2px;">
+            <div style="font-size: 11px; color: var(--text-muted);">Strategy Window</div>
+            <span style="font-size: 12px; color: var(--text-muted);">${summary.retry_strategy_window || 'N/A'}</span>
+          </div>
+        </div>
+      </div>
+
+      <h4 style="margin-bottom: 16px;"><i class="fa-solid fa-timeline"></i> Step-by-Step Execution Lifecycle</h4>
       <div class="timeline">
         ${audit.timeline.map(step => `
           <div class="timeline-step ${step.event === 'RECOVERY_OUTCOME' ? 'completed' : ''}">
             <div class="step-card">
               <h4>${step.title}</h4>
               <p>${step.description}</p>
-              <div class="step-meta">${new Date(step.timestamp).toLocaleString()}</div>
+              <div class="step-meta"><i class="fa-regular fa-clock"></i> ${new Date(step.timestamp).toLocaleString()}</div>
             </div>
           </div>
         `).join('')}
       </div>
     `;
   } catch (err) {
-    drawerContent.innerHTML = `<p class="text-rose">Error loading audit trail</p>`;
+    drawerContent.innerHTML = `<p class="text-rose">Error loading audit trail: ${err.message}</p>`;
   }
 }
 
