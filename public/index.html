@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Razorpay AI Revenue Recovery Engine — Merchant Portal</title>
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo-icon">
+          <i class="fa-solid fa-bolt-lightning"></i>
+        </div>
+        <div class="brand-text">
+          <h2>Razorpay <span class="badge-tier">PREMIUM</span></h2>
+          <p>AI Revenue Recovery Engine</p>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <a href="#overview" id="navOverview" class="nav-item active"><i class="fa-solid fa-chart-pie"></i> Overview & Lift</a>
+        <a href="#transactions" id="navTransactions" class="nav-item"><i class="fa-solid fa-receipt"></i> Recovery Feed</a>
+        <a href="#audit" id="navAudit" class="nav-item"><i class="fa-solid fa-timeline"></i> Compliance Audit</a>
+      </nav>
+
+      <div class="compliance-badge-card">
+        <div class="shield-icon"><i class="fa-solid fa-shield-halved"></i></div>
+        <h4>100% Compliant</h4>
+        <p>NPCI 4-Attempt UPI Ceiling & RBI Retry Window Spacing Enforced</p>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Navbar -->
+      <header class="topbar">
+        <div class="page-title">
+          <h1>AI Revenue Recovery Command Center</h1>
+          <p>Diagnosing root-cause payment failures & executing bounded recovery workflows</p>
+        </div>
+        <div class="actions-group">
+          <button id="btnExecuteDue" class="btn btn-primary shadow-glow">
+            <i class="fa-solid fa-play"></i> Execute Scheduled Actions
+          </button>
+          <button id="btnRefresh" class="btn btn-secondary">
+            <i class="fa-solid fa-arrows-rotate"></i> Sync Data
+          </button>
+        </div>
+      </header>
+
+      <!-- Section: Overview & Lift -->
+      <section id="sectionOverview">
+        <!-- KPI Executive Summary Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card glass">
+            <div class="kpi-icon blue"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <div class="kpi-data">
+              <span class="kpi-label">At-Risk Revenue</span>
+              <h3 id="kpiTotalAtRisk">₹0.00</h3>
+              <span class="kpi-subtext" id="kpiTotalCount">0 Failed Payments</span>
+            </div>
+          </div>
+
+          <div class="kpi-card glass highlight-card">
+            <div class="kpi-icon emerald"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="kpi-data">
+              <span class="kpi-label">Revenue Recovered</span>
+              <h3 id="kpiRecoveredAmount">₹0.00</h3>
+              <span class="kpi-badge emerald-badge" id="kpiRecoveryRate">0.0% Recovery Rate</span>
+            </div>
+          </div>
+
+          <div class="kpi-card glass">
+            <div class="kpi-icon purple"><i class="fa-solid fa-chart-line"></i></div>
+            <div class="kpi-data">
+              <span class="kpi-label">Relative Lift vs Baseline</span>
+              <h3 id="kpiRelativeLift">+0.0%</h3>
+              <span class="kpi-subtext">Over Blind Naive Retry</span>
+            </div>
+          </div>
+
+          <div class="kpi-card glass">
+            <div class="kpi-icon amber"><i class="fa-solid fa-hand-holding-hand"></i></div>
+            <div class="kpi-data">
+              <span class="kpi-label">Compliant Restraints</span>
+              <h3 id="kpiCompliantRestraints">0</h3>
+              <span class="kpi-subtext">Revoked Mandates & Max Caps Respected</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- A/B Comparison & Breakdown Section -->
+        <div class="grid-2col">
+          <!-- A/B Engine Benchmark Comparison -->
+          <div class="card glass">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-scale-balanced"></i> Benchmark Recovery Engine A/B Comparison</h3>
+              <span class="tag tag-live">Measured Batch Test</span>
+            </div>
+            <div class="comparison-body">
+              <div class="bar-group">
+                <div class="bar-label-row">
+                  <span class="bar-title">Razorpay AI Recovery Engine (Our System)</span>
+                  <span class="bar-val emerald-text" id="ourSystemRateText">0.0%</span>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill emerald-fill" id="ourSystemBar" style="width: 0%"></div>
+                </div>
+                <span class="bar-meta" id="ourSystemMeta">0 of 0 Payments Recovered</span>
+              </div>
+
+              <div class="bar-group">
+                <div class="bar-label-row">
+                  <span class="bar-title">Razorpay Naive Blind-Retry Baseline (Current)</span>
+                  <span class="bar-val text-muted" id="naiveRateText">0.0%</span>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill muted-fill" id="naiveBar" style="width: 0%"></div>
+                </div>
+                <span class="bar-meta" id="naiveMeta">0 of 0 Payments Recovered</span>
+              </div>
+
+              <div class="comparison-insight">
+                <i class="fa-solid fa-lightbulb"></i>
+                <p><strong>Strategic Value:</strong> Instead of blind T+1, T+2, T+3 retries across all decline codes, our diagnostic engine targets payday timing for <code>insufficient_funds</code> and halts illegal retries for <code>mandate_revoked</code>.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Failure Category Breakdown -->
+          <div class="card glass">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-layer-group"></i> Recovery Rate by Diagnosed Cause</h3>
+            </div>
+            <div class="breakdown-list" id="breakdownList">
+              <div class="loading-spinner"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading diagnostic categories...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Live Failed Payments & Action Feed -->
+      <section id="sectionTransactions" class="card glass margin-top">
+        <div class="table-toolbar">
+          <div class="toolbar-title">
+            <h3><i class="fa-solid fa-list-check"></i> Failed Payment Recovery Feed</h3>
+            <p>Real-time list of diagnosed failures, model-decided actions, and execution outcomes</p>
+          </div>
+          
+          <div class="toolbar-filters">
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="inputSearch" placeholder="Search customer or txn ID..." />
+            </div>
+            
+            <select id="filterMethod" class="select-filter">
+              <option value="">All Payment Methods</option>
+              <option value="upi">UPI Mandate</option>
+              <option value="card">Credit/Debit Card</option>
+              <option value="netbanking">Netbanking</option>
+            </select>
+
+            <select id="filterCategory" class="select-filter">
+              <option value="">All Failure Reasons</option>
+              <option value="insufficient_funds">Insufficient Funds</option>
+              <option value="generic_decline">Generic Decline</option>
+              <option value="card_expired">Card Expired</option>
+              <option value="card_blocked">Card Blocked</option>
+              <option value="mandate_revoked">Mandate Revoked</option>
+            </select>
+
+            <select id="filterStatus" class="select-filter">
+              <option value="">All Outcomes</option>
+              <option value="recovered">Recovered</option>
+              <option value="pending">Pending Execution</option>
+              <option value="halted">Compliance Halt</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Txn ID / Customer</th>
+                <th>Amount</th>
+                <th>Method</th>
+                <th>Diagnosed Cause</th>
+                <th>Model-Decided Action</th>
+                <th>Confidence</th>
+                <th>Status / Outcome</th>
+                <th>Audit</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr>
+                <td colspan="8" class="text-center py-4">
+                  <i class="fa-solid fa-circle-notch fa-spin"></i> Fetching transaction feed...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls Bar -->
+        <div class="pagination-bar">
+          <div class="pagination-info">
+            <span id="paginationRange">Showing 0 to 0 of 0 transactions</span>
+            <div class="page-size-selector">
+              <label for="selectPageSize">Per page:</label>
+              <select id="selectPageSize" class="select-filter-sm">
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="pagination-buttons" id="paginationButtons">
+            <button id="btnPrevPage" class="btn-page" disabled><i class="fa-solid fa-chevron-left"></i> Prev</button>
+            <div id="pageNumbers" class="page-numbers"></div>
+            <button id="btnNextPage" class="btn-page" disabled>Next <i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Compliance Audit Info -->
+      <section id="sectionAudit" class="card glass margin-top">
+        <div class="card-header">
+          <h3><i class="fa-solid fa-shield-halved"></i> Compliance Rules & Stopping Mechanics</h3>
+        </div>
+        <div class="audit-info-grid">
+          <div class="audit-info-box">
+            <i class="fa-solid fa-gavel blue-text"></i>
+            <h4>NPCI UPI Ceiling (4 Attempts Max)</h4>
+            <p>Under NPCI UPI recurring guidelines, any mandate reaching 4 total attempts (1 initial + 3 retries) is automatically halted to prevent system suspension.</p>
+          </div>
+
+          <div class="audit-info-box">
+            <i class="fa-solid fa-clock-rotate-left emerald-text"></i>
+            <h4>RBI Retry Window Spacing</h4>
+            <p>Retries are spaced across RBI-compliant windows (~24h $\rightarrow$ 72h $\rightarrow$ 168h). Rapid-fire retries are strictly blocked.</p>
+          </div>
+
+          <div class="audit-info-box">
+            <i class="fa-solid fa-ban amber-text"></i>
+            <h4>Revocation Restraint</h4>
+            <p>If a customer revokes their mandate (`mandate_revoked`), the system takes `no_action_respect_revoke` immediately, stopping un-compliant charges.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Slide-Over Audit Trail Drawer / Modal -->
+    <div id="auditDrawer" class="drawer-backdrop">
+      <div class="drawer">
+        <div class="drawer-header">
+          <div>
+            <h2><i class="fa-solid fa-timeline"></i> Transaction Audit Trail</h2>
+            <p id="drawerSubTitle">Transaction ID: ...</p>
+          </div>
+          <button id="btnCloseDrawer" class="btn-close">&times;</button>
+        </div>
+
+        <div class="drawer-body" id="drawerContent">
+          <!-- Timeline rendered dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

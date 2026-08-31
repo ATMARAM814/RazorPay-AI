@@ -1,0 +1,420 @@
+// State Store
+let state = {
+  transactions: [],
+  recoveryActions: [],
+  comparison: null,
+  breakdown: [],
+  filteredActions: [],
+  
+  // Pagination State
+  currentPage: 1,
+  pageSize: 10
+};
+
+// DOM Elements
+const kpiTotalAtRisk = document.getElementById('kpiTotalAtRisk');
+const kpiTotalCount = document.getElementById('kpiTotalCount');
+const kpiRecoveredAmount = document.getElementById('kpiRecoveredAmount');
+const kpiRecoveryRate = document.getElementById('kpiRecoveryRate');
+const kpiRelativeLift = document.getElementById('kpiRelativeLift');
+const kpiCompliantRestraints = document.getElementById('kpiCompliantRestraints');
+
+const ourSystemRateText = document.getElementById('ourSystemRateText');
+const ourSystemBar = document.getElementById('ourSystemBar');
+const ourSystemMeta = document.getElementById('ourSystemMeta');
+const naiveRateText = document.getElementById('naiveRateText');
+const naiveBar = document.getElementById('naiveBar');
+const naiveMeta = document.getElementById('naiveMeta');
+
+const breakdownList = document.getElementById('breakdownList');
+const tableBody = document.getElementById('tableBody');
+
+const inputSearch = document.getElementById('inputSearch');
+const filterMethod = document.getElementById('filterMethod');
+const filterCategory = document.getElementById('filterCategory');
+const filterStatus = document.getElementById('filterStatus');
+
+const btnExecuteDue = document.getElementById('btnExecuteDue');
+const btnRefresh = document.getElementById('btnRefresh');
+
+const auditDrawer = document.getElementById('auditDrawer');
+const btnCloseDrawer = document.getElementById('btnCloseDrawer');
+const drawerSubTitle = document.getElementById('drawerSubTitle');
+const drawerContent = document.getElementById('drawerContent');
+
+// Pagination DOM Elements
+const paginationRange = document.getElementById('paginationRange');
+const selectPageSize = document.getElementById('selectPageSize');
+const btnPrevPage = document.getElementById('btnPrevPage');
+const btnNextPage = document.getElementById('btnNextPage');
+const pageNumbers = document.getElementById('pageNumbers');
+
+// Navigation DOM Elements
+const navOverview = document.getElementById('navOverview');
+const navTransactions = document.getElementById('navTransactions');
+const navAudit = document.getElementById('navAudit');
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  fetchDashboardData();
+
+  // Toolbar Actions
+  btnRefresh.addEventListener('click', handleRefresh);
+  btnExecuteDue.addEventListener('click', handleExecuteDue);
+  
+  // Filter Event Listeners (reset to Page 1)
+  inputSearch.addEventListener('input', () => { state.currentPage = 1; applyFilters(); });
+  filterMethod.addEventListener('change', () => { state.currentPage = 1; applyFilters(); });
+  filterCategory.addEventListener('change', () => { state.currentPage = 1; applyFilters(); });
+  if (filterStatus) filterStatus.addEventListener('change', () => { state.currentPage = 1; applyFilters(); });
+
+  // Pagination Event Listeners
+  selectPageSize.addEventListener('change', (e) => {
+    state.pageSize = parseInt(e.target.value, 10);
+    state.currentPage = 1;
+    renderTableAndPagination();
+  });
+
+  btnPrevPage.addEventListener('click', () => {
+    if (state.currentPage > 1) {
+      state.currentPage -= 1;
+      renderTableAndPagination();
+    }
+  });
+
+  btnNextPage.addEventListener('click', () => {
+    const totalPages = Math.ceil(state.filteredActions.length / state.pageSize);
+    if (state.currentPage < totalPages) {
+      state.currentPage += 1;
+      renderTableAndPagination();
+    }
+  });
+
+  // Sidebar Navigation Tabs
+  setupNavigation();
+
+  // Audit Drawer Close
+  btnCloseDrawer.addEventListener('click', closeAuditDrawer);
+  auditDrawer.addEventListener('click', (e) => {
+    if (e.target === auditDrawer) closeAuditDrawer();
+  });
+});
+
+// Setup Navigation Tab Switching & Scrolling
+function setupNavigation() {
+  const navItems = [
+    { el: navOverview, target: '#sectionOverview' },
+    { el: navTransactions, target: '#sectionTransactions' },
+    { el: navAudit, target: '#sectionAudit' }
+  ];
+
+  navItems.forEach(item => {
+    if (!item.el) return;
+    item.el.addEventListener('click', (e) => {
+      e.preventDefault();
+      navItems.forEach(n => n.el && n.el.classList.remove('active'));
+      item.el.classList.add('active');
+
+      const targetEl = document.querySelector(item.target);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+}
+
+// Fetch all dashboard data
+async function fetchDashboardData() {
+  try {
+    const [compRes, breakRes, actionsRes] = await Promise.all([
+      fetch('/api/analytics/comparison').then(r => r.json()),
+      fetch('/api/analytics/breakdown').then(r => r.json()),
+      fetch('/api/recovery-actions').then(r => r.json())
+    ]);
+
+    state.comparison = compRes;
+    state.breakdown = breakRes.data || [];
+    state.recoveryActions = actionsRes.data || [];
+    state.filteredActions = [...state.recoveryActions];
+
+    renderMetrics();
+    renderComparison();
+    renderBreakdown();
+    applyFilters();
+  } catch (err) {
+    console.error('Error loading dashboard data:', err);
+  }
+}
+
+// Handle Sync / Refresh Button Click
+async function handleRefresh() {
+  const originalHtml = btnRefresh.innerHTML;
+  btnRefresh.disabled = true;
+  btnRefresh.innerHTML = `<i class="fa-solid fa-arrows-rotate fa-spin"></i> Syncing...`;
+  
+  await fetchDashboardData();
+  
+  setTimeout(() => {
+    btnRefresh.disabled = false;
+    btnRefresh.innerHTML = originalHtml;
+  }, 400);
+}
+
+// Render Executive KPI Metrics
+function renderMetrics() {
+  const actions = state.recoveryActions;
+  
+  // Total At-Risk Revenue
+  const totalAmount = actions.reduce((sum, item) => sum + (item.transactions?.amount || 0), 0);
+  kpiTotalAtRisk.textContent = `₹${(totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+  kpiTotalCount.textContent = `${actions.length.toLocaleString()} Failed Payments`;
+
+  // Recovered Revenue
+  const recoveredActions = actions.filter(a => a.outcome === 'recovered');
+  const recoveredAmount = recoveredActions.reduce((sum, item) => sum + (item.transactions?.amount || 0), 0);
+  kpiRecoveredAmount.textContent = `₹${(recoveredAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+  const comp = state.comparison;
+  if (comp) {
+    const ourRate = comp.our_system?.recovery_rate_pct || 0;
+    const naiveRate = comp.naive_baseline?.recovery_rate_pct || 0;
+    kpiRecoveryRate.textContent = `${ourRate.toFixed(1)}% Recovery Rate`;
+
+    // Relative Lift
+    const relativeLift = naiveRate > 0 ? (((ourRate - naiveRate) / naiveRate) * 100).toFixed(1) : 0;
+    kpiRelativeLift.textContent = `+${relativeLift}%`;
+  }
+
+  // Compliant Restraints Count (mandate_revoked or max attempts reached)
+  const restraints = actions.filter(a => 
+    a.action_taken === 'no_action_respect_revoke' || 
+    a.action_taken === 'stop_max_attempts_reached'
+  ).length;
+  kpiCompliantRestraints.textContent = restraints.toLocaleString();
+}
+
+// Render A/B Benchmark Comparison
+function renderComparison() {
+  const comp = state.comparison;
+  if (!comp) return;
+
+  const our = comp.our_system || { recovered: 0, total: 0, recovery_rate_pct: 0 };
+  const naive = comp.naive_baseline || { recovered: 0, total: 0, recovery_rate_pct: 0 };
+
+  ourSystemRateText.textContent = `${our.recovery_rate_pct.toFixed(1)}%`;
+  ourSystemBar.style.width = `${Math.min(our.recovery_rate_pct, 100)}%`;
+  ourSystemMeta.textContent = `${our.recovered.toLocaleString()} of ${our.total.toLocaleString()} Payments Recovered`;
+
+  naiveRateText.textContent = `${naive.recovery_rate_pct.toFixed(1)}%`;
+  naiveBar.style.width = `${Math.min(naive.recovery_rate_pct, 100)}%`;
+  naiveMeta.textContent = `${naive.recovered.toLocaleString()} of ${naive.total.toLocaleString()} Payments Recovered`;
+}
+
+// Render Failure Category Breakdown
+function renderBreakdown() {
+  if (!state.breakdown.length) {
+    breakdownList.innerHTML = `<div class="text-muted p-3">No category data available</div>`;
+    return;
+  }
+
+  breakdownList.innerHTML = state.breakdown.map(item => `
+    <div class="breakdown-item">
+      <div class="breakdown-info">
+        <h5>${formatCategory(item.predicted_category)}</h5>
+        <p>Action: <code>${item.action_taken}</code> (${item.recovered}/${item.total} recovered)</p>
+      </div>
+      <div class="breakdown-rate ${item.recovery_rate_pct > 50 ? 'emerald-text' : 'text-muted'}">
+        ${item.recovery_rate_pct.toFixed(1)}%
+      </div>
+    </div>
+  `).join('');
+}
+
+// Apply Toolbar Filters
+function applyFilters() {
+  const query = inputSearch.value.toLowerCase().trim();
+  const method = filterMethod.value;
+  const category = filterCategory.value;
+  const status = filterStatus ? filterStatus.value : '';
+
+  state.filteredActions = state.recoveryActions.filter(item => {
+    const txn = item.transactions || {};
+    const matchesSearch = !query || 
+      item.transaction_id.toLowerCase().includes(query) ||
+      (txn.customer_id && txn.customer_id.toLowerCase().includes(query));
+
+    const matchesMethod = !method || (txn.method && txn.method.toLowerCase() === method);
+    const matchesCategory = !category || item.predicted_category === category;
+    
+    let matchesStatus = true;
+    if (status === 'recovered') matchesStatus = item.outcome === 'recovered';
+    else if (status === 'pending') matchesStatus = !item.outcome;
+    else if (status === 'halted') matchesStatus = item.action_taken === 'no_action_respect_revoke' || item.action_taken === 'stop_max_attempts_reached';
+
+    return matchesSearch && matchesMethod && matchesCategory && matchesStatus;
+  });
+
+  renderTableAndPagination();
+}
+
+// Render Table AND Pagination Controls
+function renderTableAndPagination() {
+  const totalItems = state.filteredActions.length;
+  const totalPages = Math.ceil(totalItems / state.pageSize) || 1;
+
+  if (state.currentPage > totalPages) state.currentPage = totalPages;
+  if (state.currentPage < 1) state.currentPage = 1;
+
+  const startIndex = (state.currentPage - 1) * state.pageSize;
+  const endIndex = Math.min(startIndex + state.pageSize, totalItems);
+  const currentBatch = state.filteredActions.slice(startIndex, endIndex);
+
+  // Render Table Rows
+  if (!currentBatch.length) {
+    tableBody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-muted">No transactions match current filters</td></tr>`;
+  } else {
+    tableBody.innerHTML = currentBatch.map(item => {
+      const txn = item.transactions || {};
+      const amountFormatted = `₹${((txn.amount || 0) / 100).toFixed(2)}`;
+      
+      // Status Badge
+      let statusBadge = '<span class="badge badge-pending">PENDING EXECUTION</span>';
+      if (item.outcome === 'recovered') {
+        statusBadge = '<span class="badge badge-recovered"><i class="fa-solid fa-check"></i> RECOVERED</span>';
+      } else if (item.action_taken === 'no_action_respect_revoke' || item.action_taken === 'stop_max_attempts_reached') {
+        statusBadge = '<span class="badge badge-halted"><i class="fa-solid fa-shield"></i> COMPLIANCE STOP</span>';
+      } else if (item.outcome === 'not_recovered') {
+        statusBadge = '<span class="badge badge-halted">NOT RECOVERED</span>';
+      }
+
+      return `
+        <tr>
+          <td>
+            <strong class="font-mono">${item.transaction_id.substring(0, 8)}...</strong>
+            <div class="text-subtle" style="font-size: 11px;">Customer: ${txn.customer_id || 'N/A'}</div>
+          </td>
+          <td><strong>${amountFormatted}</strong></td>
+          <td><span class="badge-tier">${(txn.method || 'N/A').toUpperCase()}</span></td>
+          <td>${formatCategory(item.predicted_category || txn.error_reason)}</td>
+          <td><span class="action-pill">${item.action_taken}</span></td>
+          <td><strong>${((item.confidence_score || 0) * 100).toFixed(0)}%</strong></td>
+          <td>${statusBadge}</td>
+          <td>
+            <button onclick="openAuditDrawer('${item.transaction_id}')" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;">
+              <i class="fa-solid fa-eye"></i> Audit
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Render Pagination Info & Buttons
+  const startNum = totalItems > 0 ? startIndex + 1 : 0;
+  paginationRange.textContent = `Showing ${startNum.toLocaleString()} to ${endIndex.toLocaleString()} of ${totalItems.toLocaleString()} transactions`;
+
+  btnPrevPage.disabled = state.currentPage <= 1;
+  btnNextPage.disabled = state.currentPage >= totalPages;
+
+  renderPageNumbers(totalPages);
+}
+
+// Render Page Numbers Bar (Smart windowing for clean navigation)
+function renderPageNumbers(totalPages) {
+  let pagesHtml = '';
+  const current = state.currentPage;
+  
+  let startPage = Math.max(1, current - 2);
+  let endPage = Math.min(totalPages, current + 2);
+
+  if (startPage > 1) {
+    pagesHtml += `<button onclick="goToPage(1)" class="page-num ${current === 1 ? 'active' : ''}">1</button>`;
+    if (startPage > 2) pagesHtml += `<span class="text-subtle" style="padding: 0 4px;">...</span>`;
+  }
+
+  for (let p = startPage; p <= endPage; p++) {
+    pagesHtml += `<button onclick="goToPage(${p})" class="page-num ${current === p ? 'active' : ''}">${p}</button>`;
+  }
+
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) pagesHtml += `<span class="text-subtle" style="padding: 0 4px;">...</span>`;
+    pagesHtml += `<button onclick="goToPage(${totalPages})" class="page-num ${current === totalPages ? 'active' : ''}">${totalPages}</button>`;
+  }
+
+  pageNumbers.innerHTML = pagesHtml;
+}
+
+// Go to specific page
+window.goToPage = function(pageNum) {
+  state.currentPage = pageNum;
+  renderTableAndPagination();
+};
+
+// Handle Batch Execution Trigger
+async function handleExecuteDue() {
+  btnExecuteDue.disabled = true;
+  btnExecuteDue.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Executing Batch...`;
+
+  try {
+    const res = await fetch('/api/recovery-actions/execute-due', { method: 'POST' }).then(r => r.json());
+    alert(`Batch Execution Complete:\n- ${res.executed_count} scheduled actions executed\n- ${res.recovered_count} payments recovered (${res.recovery_rate_pct}% success rate)`);
+    await fetchDashboardData();
+  } catch (err) {
+    alert('Error executing batch actions');
+  } finally {
+    btnExecuteDue.disabled = false;
+    btnExecuteDue.innerHTML = `<i class="fa-solid fa-play"></i> Execute Scheduled Actions`;
+  }
+}
+
+// Open Audit Drawer
+async function openAuditDrawer(transactionId) {
+  drawerSubTitle.textContent = `Transaction ID: ${transactionId}`;
+  drawerContent.innerHTML = `<div class="loading-spinner"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading audit trail...</div>`;
+  auditDrawer.classList.add('active');
+
+  try {
+    const res = await fetch(`/api/audit/${transactionId}`).then(r => r.json());
+    const audit = res.data;
+
+    if (!audit || !audit.timeline) {
+      drawerContent.innerHTML = `<p class="text-muted">No timeline data available for this transaction.</p>`;
+      return;
+    }
+
+    drawerContent.innerHTML = `
+      <div style="margin-bottom: 20px; background: rgba(255,255,255,0.03); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+        <h4 style="color: var(--primary); margin-bottom: 8px;">Model Decision & Rationale</h4>
+        <p><strong>Predicted Cause:</strong> ${formatCategory(audit.recovery_action?.predicted_category)}</p>
+        <p><strong>Decided Action:</strong> <code>${audit.recovery_action?.action_taken}</code></p>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px;"><em>"${audit.recovery_action?.reasoning}"</em></p>
+      </div>
+
+      <h4 style="margin-bottom: 16px;">Step-by-Step Execution Lifecycle</h4>
+      <div class="timeline">
+        ${audit.timeline.map(step => `
+          <div class="timeline-step ${step.event === 'RECOVERY_OUTCOME' ? 'completed' : ''}">
+            <div class="step-card">
+              <h4>${step.title}</h4>
+              <p>${step.description}</p>
+              <div class="step-meta">${new Date(step.timestamp).toLocaleString()}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (err) {
+    drawerContent.innerHTML = `<p class="text-rose">Error loading audit trail</p>`;
+  }
+}
+
+window.openAuditDrawer = openAuditDrawer;
+
+function closeAuditDrawer() {
+  auditDrawer.classList.remove('active');
+}
+
+function formatCategory(cat) {
+  if (!cat) return 'N/A';
+  return cat.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
