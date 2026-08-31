@@ -23,12 +23,3 @@ export const fetchAuditTrail = async (transactionId) => {
   if (!res.ok) throw new Error('Failed to fetch transaction audit trail');
   return res.json();
 };
-
-export const executeDueActions = async () => {
-  const res = await fetch(`${BASE_URL}/recovery-actions/execute-due`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
-  });
-  if (!res.ok) throw new Error('Failed to execute due actions');
-  return res.json();
-};

@@ -10,8 +10,7 @@ import {
   fetchComparison, 
   fetchBreakdown, 
   fetchRecoveryActions, 
-  fetchAuditTrail, 
-  executeDueActions 
+  fetchAuditTrail
 } from './services/api';
 
 export function App() {
@@ -21,7 +20,6 @@ export function App() {
   const [breakdown, setBreakdown] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isExecuting, setIsExecuting] = useState(false);
 
   // Audit Drawer State
   const [selectedTxnId, setSelectedTxnId] = useState(null);
@@ -58,20 +56,6 @@ export function App() {
     setTimeout(() => setIsRefreshing(false), 400);
   };
 
-  // Handle Batch Execution
-  const handleExecuteDue = async () => {
-    setIsExecuting(true);
-    try {
-      const res = await executeDueActions();
-      alert(`Batch Execution Complete:\n- ${res.executed_count} scheduled actions executed\n- ${res.recovered_count} payments recovered (${res.recovery_rate_pct}% success rate)`);
-      await loadDashboardData();
-    } catch (err) {
-      alert('Error executing batch actions');
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
   // Open Audit Drawer
   const handleOpenAudit = async (transactionId) => {
     setSelectedTxnId(transactionId);
@@ -96,15 +80,13 @@ export function App() {
       {/* Main Content Area */}
       <main className="main-content">
         <TopHeader 
-          onExecute={handleExecuteDue}
           onRefresh={handleRefresh}
-          isExecuting={isExecuting}
           isRefreshing={isRefreshing}
         />
 
         {isLoading ? (
           <div className="p-12 text-center text-slate-400">
-            <p>Loading Razorpay AI Engine Analytics...</p>
+            <p>Loading Dashboard Analytics...</p>
           </div>
         ) : (
           <>
