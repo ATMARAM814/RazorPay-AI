@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, CheckCircle, TrendingUp, ShieldCheck } from 'lucide-react';
+import { AlertCircle, CheckCircle2, TrendingUp, ShieldCheck } from 'lucide-react';
 
 export const KpiSummaryCards = ({ recoveryActions, comparison }) => {
   const totalAmount = recoveryActions.reduce((sum, item) => sum + (item.transactions?.amount || 0), 0);
@@ -22,49 +22,49 @@ export const KpiSummaryCards = ({ recoveryActions, comparison }) => {
     <div className="kpi-grid">
       {/* At-Risk Revenue */}
       <div className="kpi-card">
-        <div className="kpi-icon icon-blue">
-          <AlertTriangle className="w-6 h-6" />
+        <div className="kpi-icon icon-slate">
+          <AlertCircle className="w-5 h-5" />
         </div>
         <div className="kpi-content">
-          <span className="kpi-label">At-Risk Revenue</span>
+          <span className="kpi-label">Failed Revenue</span>
           <h3 className="kpi-value">{totalAmountFormatted}</h3>
-          <span className="kpi-subtext">{recoveryActions.length.toLocaleString()} Failed Payments</span>
+          <span className="kpi-subtext">{recoveryActions.length.toLocaleString()} Transactions</span>
         </div>
       </div>
 
       {/* Revenue Recovered */}
-      <div className="kpi-card highlight-card">
+      <div className="kpi-card">
         <div className="kpi-icon icon-emerald">
-          <CheckCircle className="w-6 h-6" />
+          <CheckCircle2 className="w-5 h-5" />
         </div>
         <div className="kpi-content">
-          <span className="kpi-label">Revenue Recovered</span>
-          <h3 className="kpi-value text-emerald-400">{recoveredAmountFormatted}</h3>
-          <span className="kpi-badge badge-emerald">{ourRate.toFixed(1)}% Recovery Rate</span>
+          <span className="kpi-label">Recovered Revenue</span>
+          <h3 className="kpi-value text-emerald-700">{recoveredAmountFormatted}</h3>
+          <span className="kpi-subtext">{ourRate.toFixed(1)}% Recovery Rate</span>
         </div>
       </div>
 
       {/* Relative Lift vs Baseline */}
       <div className="kpi-card">
-        <div className="kpi-icon icon-purple">
-          <TrendingUp className="w-6 h-6" />
+        <div className="kpi-icon icon-blue">
+          <TrendingUp className="w-5 h-5" />
         </div>
         <div className="kpi-content">
-          <span className="kpi-label">Relative Lift vs Baseline</span>
-          <h3 className="kpi-value text-purple-400">+{relativeLift}%</h3>
-          <span className="kpi-subtext">Over Blind Naive Retry</span>
+          <span className="kpi-label">Recovery Lift</span>
+          <h3 className="kpi-value text-blue-700">+{relativeLift}%</h3>
+          <span className="kpi-subtext">vs Baseline Retry</span>
         </div>
       </div>
 
       {/* Compliant Restraints */}
       <div className="kpi-card">
-        <div className="kpi-icon icon-amber">
-          <ShieldCheck className="w-6 h-6" />
+        <div className="kpi-icon icon-slate">
+          <ShieldCheck className="w-5 h-5" />
         </div>
         <div className="kpi-content">
           <span className="kpi-label">Compliant Restraints</span>
-          <h3 className="kpi-value text-amber-400">{restraintsCount.toLocaleString()}</h3>
-          <span className="kpi-subtext">Revoked Mandates & Caps Respected</span>
+          <h3 className="kpi-value">{restraintsCount.toLocaleString()}</h3>
+          <span className="kpi-subtext">Halted Attempts</span>
         </div>
       </div>
     </div>

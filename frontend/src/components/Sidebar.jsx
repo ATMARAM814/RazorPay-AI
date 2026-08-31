@@ -7,7 +7,7 @@ import {
   FileText, 
   PieChart, 
   Settings, 
-  Sparkles
+  RotateCcw
 } from 'lucide-react';
 
 export const Sidebar = ({ activeTab, setActiveTab }) => {
@@ -16,50 +16,46 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
       {/* Brand Header */}
       <div className="brand">
         <div className="logo-icon">
-          <Zap className="w-5 h-5 text-white" />
+          <Zap className="w-5 h-5 text-white fill-current" />
         </div>
         <div className="brand-text">
-          <div className="brand-title">
-            <span>Razorpay</span>
-            <span className="badge-tier">MERCHANT</span>
-          </div>
-          <p className="brand-sub">Merchant Portal</p>
+          <h2 className="brand-title">Razorpay</h2>
+          <p className="brand-sub">Merchant Dashboard</p>
         </div>
       </div>
 
       {/* Navigation Sections */}
       <nav className="nav-menu">
-        <div className="nav-section-title">OVERVIEW</div>
+        <div className="nav-section-title">MAIN</div>
         <button 
           onClick={() => setActiveTab('overview')} 
           className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
         >
           <Home className="w-4 h-4" />
-          <span>Home Dashboard</span>
+          <span>Home</span>
         </button>
 
-        <div className="nav-section-title">PAYMENTS & PRODUCTS</div>
+        <div className="nav-section-title">PAYMENTS</div>
         <button className="nav-item opacity-60 cursor-not-allowed">
           <CreditCard className="w-4 h-4" />
-          <span>Transactions & Refunds</span>
+          <span>Transactions</span>
         </button>
         
         <button className="nav-item opacity-60 cursor-not-allowed">
           <RefreshCw className="w-4 h-4" />
-          <span>Subscriptions & Mandates</span>
+          <span>Subscriptions</span>
         </button>
 
-        {/* Featured AI Revenue Recovery Feature */}
+        {/* Smart Revenue Recovery */}
         <button 
           onClick={() => setActiveTab('recovery')} 
-          className={`nav-item featured-nav-item ${activeTab === 'recovery' ? 'active' : ''}`}
+          className={`nav-item ${activeTab === 'recovery' ? 'active' : ''}`}
         >
-          <Sparkles className="w-4 h-4 text-sky-400" />
-          <span className="font-semibold">AI Revenue Recovery</span>
-          <span className="badge-ai-new">AI RECOVERY</span>
+          <RotateCcw className="w-4 h-4" />
+          <span>Revenue Recovery</span>
         </button>
 
-        <div className="nav-section-title">SETTLEMENTS & REPORTS</div>
+        <div className="nav-section-title">REPORTS</div>
         <button className="nav-item opacity-60 cursor-not-allowed">
           <FileText className="w-4 h-4" />
           <span>Settlements</span>
@@ -69,13 +65,13 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
           className={`nav-item ${activeTab === 'audit' ? 'active' : ''}`}
         >
           <PieChart className="w-4 h-4" />
-          <span>Compliance Audit Trail</span>
+          <span>Audit Logs</span>
         </button>
 
-        <div className="nav-section-title">DEVELOPERS & SETTINGS</div>
+        <div className="nav-section-title">SETTINGS</div>
         <button className="nav-item opacity-60 cursor-not-allowed">
           <Settings className="w-4 h-4" />
-          <span>API Keys & Webhooks</span>
+          <span>Webhooks & API</span>
         </button>
       </nav>
     </aside>

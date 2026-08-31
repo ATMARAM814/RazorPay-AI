@@ -1,17 +1,12 @@
 import React from 'react';
-import { Play, RotateCw, Search, Bell, User, CheckCircle2 } from 'lucide-react';
+import { Play, RotateCw, User } from 'lucide-react';
 
 export const TopHeader = ({ onExecute, onRefresh, isExecuting, isRefreshing }) => {
   return (
     <header className="topbar">
       <div className="header-title">
-        <div className="title-row">
-          <h1>AI Revenue Recovery Command Center</h1>
-          <span className="live-status-pill">
-            <span className="status-dot"></span> Live Model Active
-          </span>
-        </div>
-        <p>Diagnosing root-cause payment failures & executing bounded recovery interventions</p>
+        <h1>Revenue Recovery</h1>
+        <p>Diagnose payment failure causes & execute scheduled retries</p>
       </div>
 
       <div className="header-controls">
@@ -23,12 +18,12 @@ export const TopHeader = ({ onExecute, onRefresh, isExecuting, isRefreshing }) =
           {isExecuting ? (
             <>
               <RotateCw className="w-4 h-4 animate-spin" />
-              <span>Executing Batch...</span>
+              <span>Executing...</span>
             </>
           ) : (
             <>
               <Play className="w-4 h-4 fill-current" />
-              <span>Execute Scheduled Actions</span>
+              <span>Execute Due Retries</span>
             </>
           )}
         </button>
@@ -43,8 +38,8 @@ export const TopHeader = ({ onExecute, onRefresh, isExecuting, isRefreshing }) =
         </button>
 
         <div className="user-profile">
-          <User className="w-4 h-4 text-slate-400" />
-          <span>Merchant Admin</span>
+          <User className="w-4 h-4 text-slate-500" />
+          <span>Account Admin</span>
         </div>
       </div>
     </header>

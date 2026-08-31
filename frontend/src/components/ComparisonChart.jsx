@@ -9,18 +9,17 @@ export const ComparisonChart = ({ comparison }) => {
     <div className="card">
       <div className="card-header">
         <div className="card-title">
-          <Scale className="w-5 h-5 text-sky-600" />
-          <h3>Benchmark Recovery Engine A/B Comparison</h3>
+          <Scale className="w-4 h-4 text-slate-700" />
+          <h3>Recovery Engine Comparison</h3>
         </div>
-        <span className="tag-live">Measured Batch Test</span>
       </div>
 
       <div className="card-body">
         {/* AI System Bar */}
         <div className="bar-group">
           <div className="bar-label-row">
-            <span className="bar-name">Razorpay AI Recovery Engine (Our System)</span>
-            <span className="bar-rate text-emerald-600">{our.recovery_rate_pct.toFixed(1)}%</span>
+            <span className="bar-name">Dynamic Retry Engine</span>
+            <span className="bar-rate text-emerald-700">{our.recovery_rate_pct.toFixed(1)}%</span>
           </div>
           <div className="bar-track">
             <div 
@@ -28,14 +27,14 @@ export const ComparisonChart = ({ comparison }) => {
               style={{ width: `${Math.min(our.recovery_rate_pct, 100)}%` }}
             ></div>
           </div>
-          <span className="bar-meta">{our.recovered.toLocaleString()} of {our.total.toLocaleString()} Payments Recovered</span>
+          <span className="bar-meta">{our.recovered.toLocaleString()} of {our.total.toLocaleString()} Recovered</span>
         </div>
 
         {/* Naive Baseline Bar */}
         <div className="bar-group">
           <div className="bar-label-row">
-            <span className="bar-name">Razorpay Naive Blind-Retry Baseline (Current)</span>
-            <span className="bar-rate text-slate-500">{naive.recovery_rate_pct.toFixed(1)}%</span>
+            <span className="bar-name">Standard Fixed Retry Baseline</span>
+            <span className="bar-rate text-slate-600">{naive.recovery_rate_pct.toFixed(1)}%</span>
           </div>
           <div className="bar-track">
             <div 
@@ -43,7 +42,7 @@ export const ComparisonChart = ({ comparison }) => {
               style={{ width: `${Math.min(naive.recovery_rate_pct, 100)}%` }}
             ></div>
           </div>
-          <span className="bar-meta">{naive.recovered.toLocaleString()} of {naive.total.toLocaleString()} Payments Recovered</span>
+          <span className="bar-meta">{naive.recovered.toLocaleString()} of {naive.total.toLocaleString()} Recovered</span>
         </div>
       </div>
     </div>

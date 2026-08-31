@@ -11,8 +11,8 @@ export const CategoryBreakdown = ({ breakdown }) => {
     <div className="card">
       <div className="card-header">
         <div className="card-title">
-          <Layers className="w-5 h-5 text-sky-400" />
-          <h3>Recovery Rate by Diagnosed Cause</h3>
+          <Layers className="w-4 h-4 text-slate-700" />
+          <h3>Recovery Rate by Failure Reason</h3>
         </div>
       </div>
 
@@ -24,9 +24,9 @@ export const CategoryBreakdown = ({ breakdown }) => {
             <div key={idx} className="breakdown-item">
               <div className="breakdown-info">
                 <h5>{formatCategory(item.predicted_category)}</h5>
-                <p>Action: <code>{item.action_taken}</code> ({item.recovered}/{item.total} recovered)</p>
+                <p>Action: {item.action_taken} ({item.recovered}/{item.total} recovered)</p>
               </div>
-              <div className={`breakdown-rate ${item.recovery_rate_pct > 50 ? 'text-emerald-400' : 'text-slate-400'}`}>
+              <div className={`breakdown-rate ${item.recovery_rate_pct > 50 ? 'text-emerald-700' : 'text-slate-600'}`}>
                 {item.recovery_rate_pct.toFixed(1)}%
               </div>
             </div>
