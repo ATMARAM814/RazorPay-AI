@@ -1,5 +1,12 @@
 import { supabase } from '../config/supabase.js';
 
+// Safe Date Parser Helper
+const parseDateSafely = (dateStr, fallback = new Date()) => {
+  if (!dateStr) return fallback;
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? fallback : d;
+};
+
 // GET /api/audit/:transactionId — Full audit trail for a specific transaction
 export const getAuditTrail = async (req, res) => {
   try {
@@ -25,34 +32,37 @@ export const getAuditTrail = async (req, res) => {
     const naiveBaseline = naiveRes.data || null;
 
     // 1. Calculate strict chronological timestamps relative to transaction creation (t1 < t2 < t3)
-    const t1 = new Date(transaction.created_at || '2026-08-25T10:00:00Z');
+    const t1 = parseDateSafely(transaction.created_at, new Date('2026-08-25T10:00:00Z'));
     const t2 = new Date(t1.getTime() + 60 * 1000); // AI diagnosis 1 minute after failure
 
     const actionTaken = recoveryAction ? recoveryAction.action_taken : 'retry_now';
     const isRecovered = recoveryAction?.outcome === 'recovered';
-    const isHalted = 
-      actionTaken === 'no_action_respect_revoke' || 
-      actionTaken === 'stop_max_attempts_reached';
-
-    // 2. Calculate Attempts Used & Retries Remaining
+    
+    // 2. Calculate Attempt Numbers & Retries Allowed
+    const maxAttemptsAllowed = 4; // NPCI UPI Hard Cap
     let attemptsUsed = transaction.attempt_number || 1;
     if (isRecovered) {
-      attemptsUsed = 2; // 1 Initial Failure + 1 Successful AI Retry
+      attemptsUsed = Math.min(attemptsUsed, 2); // 1 Initial Failure + 1 Successful AI Retry
     }
-    const maxAttemptsAllowed = 4; // NPCI UPI Hard Cap
+
+    const isHalted = 
+      actionTaken === 'no_action_respect_revoke' || 
+      actionTaken === 'stop_max_attempts_reached' ||
+      attemptsUsed >= maxAttemptsAllowed;
+
     let retriesRemaining = (isRecovered || isHalted) ? 0 : Math.max(0, maxAttemptsAllowed - attemptsUsed);
 
     // Compute next retry timestamp relative to t1 ONLY if active pending retries exist
     let t3 = null;
     let nextRetryISO = null;
 
-    if (!isRecovered && !isHalted) {
+    if (!isRecovered && !isHalted && retriesRemaining > 0) {
       let delayHours = 24;
       if (actionTaken === 'retry_delayed') delayHours = 72; // 3 days (payday window alignment)
       else if (actionTaken === 'retry_now') delayHours = 2; // 2 hours (transient network recovery)
       else if (actionTaken === 'prompt_update_card') delayHours = 24; // 1 day
 
-      t3 = new Date(t1.getTime() + delayHours * 3600 * 1000);
+      t3 = new Date(t1.getTime() + (delayHours * attemptsUsed) * 3600 * 1000);
       nextRetryISO = t3.toISOString();
     } else if (isRecovered) {
       t3 = new Date(t1.getTime() + 24 * 3600 * 1000); // Recovery executed 1 day after failure
@@ -67,7 +77,7 @@ export const getAuditTrail = async (req, res) => {
       retryStrategyWindow = 'Customer Method Update Link Prompt';
     } else if (actionTaken === 'no_action_respect_revoke') {
       retryStrategyWindow = 'Zero Retries (Customer Mandate Revoked — Compliant Restraint)';
-    } else if (actionTaken === 'stop_max_attempts_reached') {
+    } else if (actionTaken === 'stop_max_attempts_reached' || attemptsUsed >= maxAttemptsAllowed) {
       retryStrategyWindow = 'Zero Retries (NPCI 4-Attempt Ceiling Reached)';
     }
 
@@ -80,7 +90,7 @@ export const getAuditTrail = async (req, res) => {
       event: 'PAYMENT_FAILED',
       timestamp: t1.toISOString(),
       title: 'Initial Payment Attempt Failed',
-      description: `Attempt 1 of 4 failed: INR ${(transaction.amount / 100).toFixed(2)} via ${transaction.method.toUpperCase()} failed. Reason: ${transaction.error_reason} (Source: ${transaction.error_source || 'N/A'}).`,
+      description: `Attempt 1 of ${maxAttemptsAllowed} failed: INR ${(transaction.amount / 100).toFixed(2)} via ${(transaction.method || 'payment').toUpperCase()} failed. Reason: ${transaction.error_reason || 'decline'} (Source: ${transaction.error_source || 'N/A'}).`,
       details: {
         amount: transaction.amount,
         method: transaction.method,
@@ -116,7 +126,7 @@ export const getAuditTrail = async (req, res) => {
         step: 3,
         event: 'RECOVERY_OUTCOME',
         timestamp: t3 ? t3.toISOString() : t2.toISOString(),
-        title: isRecovered ? 'Revenue Recovered (Attempt 2 of 4)' : 'Recovery Execution Status',
+        title: isRecovered ? `Revenue Recovered (Attempt ${attemptsUsed} of 4)` : 'Recovery Execution Status',
         description: isRecovered
           ? `AI Intervention Retry Succeeded: INR ${(transaction.amount / 100).toFixed(2)} recovered.`
           : isHalted

@@ -193,9 +193,9 @@ function renderMetrics() {
   const countRecoveredEl = document.getElementById('countRecovered');
   const countHaltedEl = document.getElementById('countHalted');
 
-  const pendingCount = actions.filter(a => !a.outcome).length;
   const recoveredCount = actions.filter(a => a.outcome === 'recovered').length;
   const haltedCount = actions.filter(a => a.action_taken === 'no_action_respect_revoke' || a.action_taken === 'stop_max_attempts_reached').length;
+  const pendingCount = actions.length - (recoveredCount + haltedCount);
 
   if (countAllEl) countAllEl.textContent = actions.length.toLocaleString();
   if (countPendingEl) countPendingEl.textContent = pendingCount.toLocaleString();
@@ -285,9 +285,12 @@ function applyFilters() {
     const matchesCategory = !category || item.predicted_category === category;
     
     let matchesStatus = true;
-    if (status === 'recovered') matchesStatus = item.outcome === 'recovered';
-    else if (status === 'pending') matchesStatus = !item.outcome;
-    else if (status === 'halted') matchesStatus = item.action_taken === 'no_action_respect_revoke' || item.action_taken === 'stop_max_attempts_reached';
+    const isHalted = item.action_taken === 'no_action_respect_revoke' || item.action_taken === 'stop_max_attempts_reached';
+    const isRecovered = item.outcome === 'recovered';
+
+    if (status === 'recovered') matchesStatus = isRecovered;
+    else if (status === 'pending') matchesStatus = !isRecovered && !isHalted;
+    else if (status === 'halted') matchesStatus = isHalted;
 
     return matchesSearch && matchesMethod && matchesCategory && matchesStatus;
   });

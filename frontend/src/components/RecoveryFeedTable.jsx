@@ -22,12 +22,12 @@ export const RecoveryFeedTable = ({ recoveryActions, onOpenAudit }) => {
   // Calculate Tab Counts
   const counts = useMemo(() => {
     const total = recoveryActions.length;
-    const pending = recoveryActions.filter(a => !a.outcome).length;
     const recovered = recoveryActions.filter(a => a.outcome === 'recovered').length;
     const halted = recoveryActions.filter(a => 
       a.action_taken === 'no_action_respect_revoke' || 
       a.action_taken === 'stop_max_attempts_reached'
     ).length;
+    const pending = total - (recovered + halted);
     return { total, pending, recovered, halted };
   }, [recoveryActions]);
 
@@ -47,9 +47,12 @@ export const RecoveryFeedTable = ({ recoveryActions, onOpenAudit }) => {
       // Status Check (Combining Sub-Tab selection and Dropdown status)
       const targetStatus = activeSubTab || filterStatus;
       let matchesStatus = true;
-      if (targetStatus === 'recovered') matchesStatus = item.outcome === 'recovered';
-      else if (targetStatus === 'pending') matchesStatus = !item.outcome;
-      else if (targetStatus === 'halted') matchesStatus = item.action_taken === 'no_action_respect_revoke' || item.action_taken === 'stop_max_attempts_reached';
+      const isHalted = item.action_taken === 'no_action_respect_revoke' || item.action_taken === 'stop_max_attempts_reached';
+      const isRecovered = item.outcome === 'recovered';
+
+      if (targetStatus === 'recovered') matchesStatus = isRecovered;
+      else if (targetStatus === 'pending') matchesStatus = !isRecovered && !isHalted;
+      else if (targetStatus === 'halted') matchesStatus = isHalted;
 
       return matchesSearch && matchesMethod && matchesCategory && matchesStatus;
     });
