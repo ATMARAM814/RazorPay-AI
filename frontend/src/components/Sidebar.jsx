@@ -6,9 +6,7 @@ import {
   RefreshCw, 
   FileText, 
   PieChart, 
-  ShieldCheck, 
   Settings, 
-  ArrowUpRight,
   Sparkles
 } from 'lucide-react';
 
@@ -25,7 +23,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
             <span>Razorpay</span>
             <span className="badge-tier">MERCHANT</span>
           </div>
-          <p className="brand-sub">Acme Corp • Test Mode</p>
+          <p className="brand-sub">Merchant Portal</p>
         </div>
       </div>
 
@@ -58,7 +56,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
         >
           <Sparkles className="w-4 h-4 text-sky-400" />
           <span className="font-semibold">AI Revenue Recovery</span>
-          <span className="badge-ai-new">AI ADD-ON</span>
+          <span className="badge-ai-new">AI RECOVERY</span>
         </button>
 
         <div className="nav-section-title">SETTLEMENTS & REPORTS</div>
@@ -80,13 +78,6 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
           <span>API Keys & Webhooks</span>
         </button>
       </nav>
-
-      {/* Compliance Badge Card */}
-      <div className="compliance-card">
-        <ShieldCheck className="w-6 h-6 text-emerald-400 mb-1" />
-        <h4>100% Compliant Engine</h4>
-        <p>NPCI 4-Attempt UPI Limit & RBI Spacing Enforced</p>
-      </div>
     </aside>
   );
 };
