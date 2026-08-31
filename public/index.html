@@ -151,6 +151,14 @@
 
       <!-- Section: Live Failed Payments & Action Feed -->
       <section id="sectionTransactions" class="card glass margin-top">
+        <!-- Sub-Tabs Bar for Disentangled Views -->
+        <div class="feed-tabs-bar" style="padding: 16px 24px 0 24px; display: flex; gap: 12px; border-bottom: 1px solid var(--border-color);">
+          <button id="tabAll" class="feed-tab active" onclick="setFeedTab('')"><i class="fa-solid fa-layer-group"></i> All Feed (<span id="countAll">0</span>)</button>
+          <button id="tabPending" class="feed-tab" onclick="setFeedTab('pending')"><i class="fa-solid fa-clock-rotate-left"></i> Ongoing Retries (<span id="countPending">0</span>)</button>
+          <button id="tabRecovered" class="feed-tab" onclick="setFeedTab('recovered')"><i class="fa-solid fa-circle-check"></i> Successfully Recovered (<span id="countRecovered">0</span>)</button>
+          <button id="tabHalted" class="feed-tab" onclick="setFeedTab('halted')"><i class="fa-solid fa-shield-halved"></i> Compliance Restraints (<span id="countHalted">0</span>)</button>
+        </div>
+
         <div class="table-toolbar">
           <div class="toolbar-title">
             <h3><i class="fa-solid fa-list-check"></i> Failed Payment Recovery Feed</h3>

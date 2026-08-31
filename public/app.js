@@ -146,6 +146,29 @@ async function fetchDashboardData() {
   }
 }
 
+// Global Feed Tab Switcher
+window.setFeedTab = function(statusFilter) {
+  if (filterStatus) filterStatus.value = statusFilter;
+  
+  const tabMap = {
+    '': 'tabAll',
+    'pending': 'tabPending',
+    'recovered': 'tabRecovered',
+    'halted': 'tabHalted'
+  };
+
+  ['tabAll', 'tabPending', 'tabRecovered', 'tabHalted'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+
+  const activeTab = document.getElementById(tabMap[statusFilter] || 'tabAll');
+  if (activeTab) activeTab.classList.add('active');
+
+  state.currentPage = 1;
+  applyFilters();
+};
+
 // Handle Sync / Refresh Button Click
 async function handleRefresh() {
   const originalHtml = btnRefresh.innerHTML;
@@ -160,9 +183,24 @@ async function handleRefresh() {
   }, 400);
 }
 
-// Render Executive KPI Metrics
+// Render Executive KPI Metrics & Tab Counts
 function renderMetrics() {
   const actions = state.recoveryActions;
+  
+  // Tab Counts Update
+  const countAllEl = document.getElementById('countAll');
+  const countPendingEl = document.getElementById('countPending');
+  const countRecoveredEl = document.getElementById('countRecovered');
+  const countHaltedEl = document.getElementById('countHalted');
+
+  const pendingCount = actions.filter(a => !a.outcome).length;
+  const recoveredCount = actions.filter(a => a.outcome === 'recovered').length;
+  const haltedCount = actions.filter(a => a.action_taken === 'no_action_respect_revoke' || a.action_taken === 'stop_max_attempts_reached').length;
+
+  if (countAllEl) countAllEl.textContent = actions.length.toLocaleString();
+  if (countPendingEl) countPendingEl.textContent = pendingCount.toLocaleString();
+  if (countRecoveredEl) countRecoveredEl.textContent = recoveredCount.toLocaleString();
+  if (countHaltedEl) countHaltedEl.textContent = haltedCount.toLocaleString();
   
   // Total At-Risk Revenue
   const totalAmount = actions.reduce((sum, item) => sum + (item.transactions?.amount || 0), 0);
