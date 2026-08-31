@@ -6,11 +6,13 @@ import { ComparisonChart } from './components/ComparisonChart';
 import { CategoryBreakdown } from './components/CategoryBreakdown';
 import { RecoveryFeedTable } from './components/RecoveryFeedTable';
 import { AuditDrawer } from './components/AuditDrawer';
+import { SimulationModal } from './components/SimulationModal';
 import { 
   fetchComparison, 
   fetchBreakdown, 
   fetchRecoveryActions, 
-  fetchAuditTrail
+  fetchAuditTrail,
+  simulateLivePayment
 } from './services/api';
 
 export function App() {
@@ -20,6 +22,11 @@ export function App() {
   const [breakdown, setBreakdown] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Live Simulation State
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulationResult, setSimulationResult] = useState(null);
+  const [isSimulationModalOpen, setIsSimulationModalOpen] = useState(false);
 
   // Audit Drawer State
   const [selectedTxnId, setSelectedTxnId] = useState(null);
@@ -56,6 +63,27 @@ export function App() {
     setTimeout(() => setIsRefreshing(false), 400);
   };
 
+  // Handle Live Simulation Click
+  const handleSimulate = async () => {
+    setIsSimulating(true);
+    setSimulationResult(null);
+    try {
+      const result = await simulateLivePayment();
+      setSimulationResult(result);
+      setIsSimulationModalOpen(true);
+    } catch (err) {
+      alert('Simulation error: ' + err.message);
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
+  // Prepend simulated action into live table state
+  const handleSimulationComplete = (newAction) => {
+    if (!newAction) return;
+    setRecoveryActions(prev => [newAction, ...prev]);
+  };
+
   // Open Audit Drawer
   const handleOpenAudit = async (transactionId) => {
     setSelectedTxnId(transactionId);
@@ -80,6 +108,8 @@ export function App() {
       {/* Main Content Area */}
       <main className="main-content">
         <TopHeader 
+          onSimulate={handleSimulate}
+          isSimulating={isSimulating}
           onRefresh={handleRefresh}
           isRefreshing={isRefreshing}
         />
@@ -110,6 +140,14 @@ export function App() {
           </>
         )}
       </main>
+
+      {/* Live Payment Recovery Simulation Staged Reveal Modal */}
+      <SimulationModal 
+        isOpen={isSimulationModalOpen}
+        onClose={() => setIsSimulationModalOpen(false)}
+        simulationResult={simulationResult}
+        onComplete={handleSimulationComplete}
+      />
 
       {/* Slide-Over Audit Drawer Modal */}
       <AuditDrawer 

@@ -1,7 +1,7 @@
 import React from 'react';
-import { RotateCw, User } from 'lucide-react';
+import { RotateCw, User, Sparkles } from 'lucide-react';
 
-export const TopHeader = ({ onRefresh, isRefreshing }) => {
+export const TopHeader = ({ onSimulate, isSimulating, onRefresh, isRefreshing }) => {
   return (
     <header className="topbar">
       <div className="header-title">
@@ -10,6 +10,15 @@ export const TopHeader = ({ onRefresh, isRefreshing }) => {
       </div>
 
       <div className="header-controls">
+        <button 
+          onClick={onSimulate} 
+          disabled={isSimulating}
+          className="btn btn-primary"
+        >
+          <Sparkles className={`w-4 h-4 ${isSimulating ? 'animate-spin' : ''}`} />
+          <span>{isSimulating ? 'Simulating...' : 'Simulate New Failed Payment'}</span>
+        </button>
+
         <button 
           onClick={onRefresh} 
           disabled={isRefreshing}

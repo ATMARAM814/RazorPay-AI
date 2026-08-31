@@ -212,9 +212,16 @@ export const RecoveryFeedTable = ({ recoveryActions, onOpenAudit }) => {
                 }
 
                 return (
-                  <tr key={item.transaction_id}>
+                  <tr key={item.transaction_id || item.id}>
                     <td>
-                      <strong className="font-mono text-slate-200">{item.transaction_id.substring(0, 8)}...</strong>
+                      <div className="flex items-center gap-1.5">
+                        <strong className="font-mono text-slate-900">{item.transaction_id ? item.transaction_id.substring(0, 8) : 'N/A'}...</strong>
+                        {(item.is_live_demo || txn.is_live_demo) && (
+                          <span className="bg-blue-100 text-blue-700 text-3xs font-bold px-1.5 py-0.5 rounded border border-blue-300">
+                            LIVE
+                          </span>
+                        )}
+                      </div>
                       <div className="text-subtle text-xs">Customer: {txn.customer_id || 'N/A'}</div>
                     </td>
                     <td><strong>{amountFormatted}</strong></td>

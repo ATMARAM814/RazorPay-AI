@@ -10,6 +10,7 @@ import transactionsRoutes from './routes/transactions.js';
 import recoveryRoutes from './routes/recovery.js';
 import analyticsRoutes from './routes/analytics.js';
 import auditRoutes from './routes/audit.js';
+import simulationRoutes from './routes/simulation.js';
 
 dotenv.config();
 
@@ -54,6 +55,7 @@ apiRouter.use('/transactions', transactionsRoutes);
 apiRouter.use('/recovery-actions', recoveryRoutes);
 apiRouter.use('/analytics', analyticsRoutes);
 apiRouter.use('/audit', auditRoutes);
+apiRouter.use('/simulate-live', simulationRoutes);
 
 app.use('/api', apiRouter);
 

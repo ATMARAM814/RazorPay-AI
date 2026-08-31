@@ -23,3 +23,12 @@ export const fetchAuditTrail = async (transactionId) => {
   if (!res.ok) throw new Error('Failed to fetch transaction audit trail');
   return res.json();
 };
+
+export const simulateLivePayment = async () => {
+  const res = await fetch(`${BASE_URL}/simulate-live`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) throw new Error('Failed to simulate live payment');
+  return res.json();
+};
