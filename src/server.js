@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 import healthRoutes from './routes/healthRoutes.js';
@@ -27,8 +28,15 @@ app.use(cors({
 
 app.use(express.json());
 
-// Serve static frontend dashboard assets from /public
-app.use(express.static(path.join(__dirname, '../public')));
+// Serve static frontend assets (prefer React production build frontend/dist if built)
+const distPath = path.join(__dirname, '../frontend/dist');
+const publicPath = path.join(__dirname, '../public');
+
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+} else {
+  app.use(express.static(publicPath));
+}
 
 // Request logging middleware (method + path + timestamp)
 app.use((req, res, next) => {
@@ -52,7 +60,10 @@ app.use('/api', apiRouter);
 // Fallback to index.html for frontend SPA routing
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  if (fs.existsSync(distPath)) {
+    return res.sendFile(path.join(distPath, 'index.html'));
+  }
+  res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 // Start server
