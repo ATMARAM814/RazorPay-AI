@@ -7,7 +7,8 @@ import {
   FileText, 
   PieChart, 
   Settings, 
-  RotateCcw
+  RotateCcw,
+  Sparkles
 } from 'lucide-react';
 
 export const Sidebar = ({ activeTab, setActiveTab }) => {
@@ -53,6 +54,15 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
         >
           <RotateCcw className="w-4 h-4" />
           <span>Revenue Recovery</span>
+        </button>
+
+        <div className="nav-section-title">DEMO & TESTING</div>
+        <button 
+          onClick={() => setActiveTab('simulation')} 
+          className={`nav-item ${activeTab === 'simulation' ? 'active' : ''}`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Live Simulation Sandbox</span>
         </button>
 
         <div className="nav-section-title">REPORTS</div>

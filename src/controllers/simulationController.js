@@ -44,16 +44,32 @@ export const simulateLivePayment = async (req, res) => {
     ]);
 
     const bankCode = getRandomChoice(['HDFC', 'ICIC', 'SBIN', 'AXIS', 'KKBK', 'UTIB']);
-    const cardNetwork = getRandomChoice(['visa', 'mastercard', 'rupay']);
+    const cardNetwork = method === 'card' ? getRandomChoice(['visa', 'mastercard', 'rupay']) : null;
 
-    // Error reason weights: insufficient_funds 38%, card_expired 15%, mandate_revoked 15%, card_blocked 15%, generic_decline 17%
-    const errorReason = getRandomWeighted([
-      { value: 'insufficient_funds', weight: 0.38 },
-      { value: 'card_expired', weight: 0.15 },
-      { value: 'mandate_revoked', weight: 0.15 },
-      { value: 'card_blocked', weight: 0.15 },
-      { value: 'generic_decline', weight: 0.17 }
-    ]);
+    // ENFORCE STRICT LOGICAL CONSISTENCY BETWEEN METHOD AND ERROR_REASON
+    let errorReasonOptions = [];
+    if (method === 'upi') {
+      errorReasonOptions = [
+        { value: 'insufficient_funds', weight: 0.50 },
+        { value: 'mandate_revoked', weight: 0.25 },
+        { value: 'generic_decline', weight: 0.25 }
+      ];
+    } else if (method === 'card') {
+      errorReasonOptions = [
+        { value: 'card_expired', weight: 0.35 },
+        { value: 'card_blocked', weight: 0.35 },
+        { value: 'insufficient_funds', weight: 0.15 },
+        { value: 'generic_decline', weight: 0.15 }
+      ];
+    } else {
+      // Netbanking
+      errorReasonOptions = [
+        { value: 'insufficient_funds', weight: 0.60 },
+        { value: 'generic_decline', weight: 0.40 }
+      ];
+    }
+
+    const errorReason = getRandomWeighted(errorReasonOptions);
 
     // Derive error_source
     let errorSource = 'customer';
@@ -64,7 +80,7 @@ export const simulateLivePayment = async (req, res) => {
     const attemptNumber = getRandomInt(1, 3);
     const createdAt = new Date().toISOString();
 
-    // 3. Insert transaction into Supabase (only existing schema columns)
+    // 3. Insert transaction into Supabase
     const newTxnPayload = {
       customer_id: customerId,
       amount,
@@ -125,24 +141,19 @@ export const simulateLivePayment = async (req, res) => {
       reasoning = 'NPCI UPI 4-attempt hard cap reached. Halting further retries.';
     }
 
-    // 5. Determine Outcome Simulation Roll
-    let outcome = 'not_recovered';
-    let recoveryProbability = 0;
+    // 5. REALISTIC OUTCOME SIMULATION:
+    // - prompt_update_card & retry_delayed do NOT recover immediately in 1 second!
+    // - They are placed in ONGOING RETRIES (outcome = null) with scheduled future retries!
+    let outcome = null; // Default to Pending (Ongoing Retry)
 
     if (actionTaken === 'no_action_respect_revoke' || actionTaken === 'stop_max_attempts_reached') {
-      recoveryProbability = 0;
-    } else if (errorReason === 'insufficient_funds') {
-      recoveryProbability = 0.70;
-    } else if (errorReason === 'card_expired') {
-      recoveryProbability = 0.55;
-    } else if (errorReason === 'card_blocked') {
-      recoveryProbability = 0.25;
-    } else if (errorReason === 'generic_decline') {
-      recoveryProbability = 0.85;
-    }
-
-    if (Math.random() <= recoveryProbability) {
-      outcome = 'recovered';
+      outcome = 'not_recovered'; // Compliance Stop / Halted
+    } else if (actionTaken === 'retry_now') {
+      // Fast infrastructure retry (2 hours) can recover
+      outcome = Math.random() <= 0.85 ? 'recovered' : 'not_recovered';
+    } else {
+      // prompt_update_card and retry_delayed stay ONGOING / PENDING
+      outcome = null;
     }
 
     // 6. Insert into recovery_actions table
@@ -196,7 +207,7 @@ export const simulateLivePayment = async (req, res) => {
           confidence_score: confidenceScore,
           reasoning,
           outcome,
-          recovery_probability: recoveryProbability
+          is_ongoing: !outcome && actionTaken !== 'no_action_respect_revoke' && actionTaken !== 'stop_max_attempts_reached'
         }
       }
     });
