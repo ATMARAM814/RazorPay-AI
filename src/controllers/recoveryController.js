@@ -8,7 +8,8 @@ export const getAllRecoveryActions = async (req, res) => {
 
     let query = supabase
       .from('recovery_actions')
-      .select('*, transactions(method, error_reason, amount)', { count: 'exact' });
+      .select('*, transactions(method, error_reason, amount, status, customer_id)', { count: 'exact' })
+      .order('created_at', { ascending: false });
 
     if (page && limit && page > 0 && limit > 0) {
       const from = (page - 1) * limit;

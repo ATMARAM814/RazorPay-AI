@@ -2,20 +2,20 @@ import React from 'react';
 import { AlertCircle, CheckCircle2, TrendingUp, ShieldCheck } from 'lucide-react';
 
 export const KpiSummaryCards = ({ recoveryActions, comparison }) => {
-  const totalAmount = recoveryActions.reduce((sum, item) => sum + (item.transactions?.amount || 0), 0);
+  const validActions = Array.isArray(recoveryActions) ? recoveryActions.flat() : [];
+  const totalAmount = validActions.reduce((sum, item) => sum + (item?.transactions?.amount || 0), 0);
   const totalAmountFormatted = `₹${(totalAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
-  const recoveredActions = recoveryActions.filter(a => a.outcome === 'recovered');
-  const recoveredAmount = recoveredActions.reduce((sum, item) => sum + (item.transactions?.amount || 0), 0);
+  const recoveredActions = validActions.filter(a => a && (a.outcome === 'recovered' || a.outcome === 'captured'));
+  const recoveredAmount = recoveredActions.reduce((sum, item) => sum + (item?.transactions?.amount || 0), 0);
   const recoveredAmountFormatted = `₹${(recoveredAmount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
   const ourRate = comparison?.our_system?.recovery_rate_pct || 0;
   const naiveRate = comparison?.naive_baseline?.recovery_rate_pct || 0;
   const relativeLift = naiveRate > 0 ? (((ourRate - naiveRate) / naiveRate) * 100).toFixed(1) : '0.0';
 
-  const restraintsCount = recoveryActions.filter(a => 
-    a.action_taken === 'no_action_respect_revoke' || 
-    a.action_taken === 'stop_max_attempts_reached'
+  const restraintsCount = validActions.filter(a => 
+    a && (a.action_taken === 'no_action_respect_revoke' || a.action_taken === 'stop_max_attempts_reached')
   ).length;
 
   return (

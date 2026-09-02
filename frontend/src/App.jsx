@@ -39,8 +39,9 @@ export function App() {
 
   // Dynamically compute synchronized analytics directly from the live recoveryActions state array
   const dynamicComparison = useMemo(() => {
-    const total = recoveryActions.length;
-    const recovered = recoveryActions.filter(a => a.outcome === 'recovered').length;
+    const validActions = Array.isArray(recoveryActions) ? recoveryActions.flat() : [];
+    const total = validActions.length;
+    const recovered = validActions.filter(a => a && (a.outcome === 'recovered' || a.outcome === 'captured')).length;
     const ourRatePct = total > 0 ? parseFloat(((recovered / total) * 100).toFixed(1)) : 0;
 
     // Naive baseline comparison (naive blind-retry achieves ~30.5% recovery rate)
@@ -62,8 +63,10 @@ export function App() {
   }, [recoveryActions]);
 
   const dynamicBreakdown = useMemo(() => {
+    const validActions = Array.isArray(recoveryActions) ? recoveryActions.flat() : [];
     const map = new Map();
-    for (const item of recoveryActions) {
+    for (const item of validActions) {
+      if (!item) continue;
       const category = item.predicted_category || item.transactions?.error_reason || 'unknown';
       const action = item.action_taken || 'unknown';
       const key = `${category}:::${action}`;
@@ -78,7 +81,7 @@ export function App() {
       }
       const entry = map.get(key);
       entry.total += 1;
-      if (item.outcome === 'recovered') {
+      if (item.outcome === 'recovered' || item.outcome === 'captured') {
         entry.recovered += 1;
       }
     }
@@ -104,10 +107,14 @@ export function App() {
     setActiveTab('simulation');
   };
 
-  // Prepend simulated action into live table state
-  const handleSimulationSuccess = (newAction) => {
-    if (!newAction) return;
-    setRecoveryActions(prev => [newAction, ...prev]);
+  // Prepend simulated action into live table state safely (flatten array)
+  const handleSimulationSuccess = (newItems) => {
+    if (!newItems) return;
+    const itemsArray = Array.isArray(newItems) ? newItems.flat() : [newItems];
+    setRecoveryActions(prev => {
+      const prevArray = Array.isArray(prev) ? prev.flat() : [];
+      return [...itemsArray, ...prevArray];
+    });
   };
 
   return (

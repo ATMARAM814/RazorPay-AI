@@ -94,15 +94,24 @@ export const simulateLivePayment = async (req, res) => {
           .single();
 
         if (!txnErr && insertedTxn) {
-          const actionResult = {
-            id: `cap_${insertedTxn.id}`,
+          const capActionPayload = {
             transaction_id: insertedTxn.id,
             predicted_category: 'none',
             action_taken: 'none',
             confidence_score: 1.0,
             reasoning: 'Payment captured successfully on initial attempt. No recovery intervention needed.',
             outcome: 'captured',
-            created_at: timestamp,
+            created_at: timestamp
+          };
+
+          const { data: insertedCapAction } = await supabase
+            .from('recovery_actions')
+            .insert([capActionPayload])
+            .select()
+            .single();
+
+          const actionResult = {
+            ...(insertedCapAction || capActionPayload),
             is_live_demo: true,
             transactions: {
               ...insertedTxn,

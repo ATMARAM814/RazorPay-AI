@@ -19,21 +19,26 @@ export const RecoveryFeedTable = ({ recoveryActions, onOpenAudit }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const validActions = useMemo(() => {
+    return Array.isArray(recoveryActions) ? recoveryActions.flat().filter(Boolean) : [];
+  }, [recoveryActions]);
+
   // Calculate Tab Counts
   const counts = useMemo(() => {
-    const total = recoveryActions.length;
-    const recovered = recoveryActions.filter(a => a.outcome === 'recovered').length;
-    const halted = recoveryActions.filter(a => 
+    const total = validActions.length;
+    const recovered = validActions.filter(a => a.outcome === 'recovered' || a.outcome === 'captured').length;
+    const halted = validActions.filter(a => 
       a.action_taken === 'no_action_respect_revoke' || 
       a.action_taken === 'stop_max_attempts_reached'
     ).length;
     const pending = total - (recovered + halted);
     return { total, pending, recovered, halted };
-  }, [recoveryActions]);
+  }, [validActions]);
 
   // Apply Sub-Tab and Toolbar Filters
   const filteredActions = useMemo(() => {
-    return recoveryActions.filter(item => {
+    return validActions.filter(item => {
+      if (!item) return false;
       const txn = item.transactions || {};
       const query = searchQuery.toLowerCase().trim();
 
