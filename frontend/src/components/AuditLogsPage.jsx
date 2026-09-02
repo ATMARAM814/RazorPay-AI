@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { 
-  PieChart, 
   Search, 
   Eye, 
   Clock, 
@@ -8,7 +7,8 @@ import {
   ShieldAlert, 
   X,
   Brain,
-  Calendar
+  Calendar,
+  ClipboardList
 } from 'lucide-react';
 import { PaginationBar } from './PaginationBar';
 import { fetchAuditTrail } from '../services/api';
@@ -78,23 +78,14 @@ export const AuditLogsPage = ({ recoveryActions }) => {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="card p-6 bg-white border border-slate-200 rounded-lg shadow-sm">
-        <div className="flex items-center gap-3 mb-1">
-          <PieChart className="w-5 h-5 text-blue-600" />
-          <h2 className="text-xl font-bold text-slate-900">Compliance & Audit Trail Logs</h2>
-        </div>
-        <p className="text-sm text-slate-600">
-          Tabular audit logs detailing attempt counts, retries remaining, next retry schedules, and NPCI/RBI compliance enforcements.
-        </p>
-      </div>
-
-      {/* Main Tabular Audit Logs Card */}
-      <div className="card bg-white border border-slate-200 rounded-lg shadow-sm">
+      {/* Spacious Main Datatable Card */}
+      <div className="card bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
         {/* Table Toolbar & Filters */}
         <div className="table-toolbar">
           <div className="toolbar-title">
-            <h3>Transaction Audit Log Table</h3>
+            <h3 className="flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-blue-600 inline" /> Transaction Audit Log Table
+            </h3>
             <p>Full record of retry attempts used, retries left, and scheduled execution times</p>
           </div>
 
@@ -175,11 +166,14 @@ export const AuditLogsPage = ({ recoveryActions }) => {
                     let delayHours = 24;
                     if (item.action_taken === 'retry_delayed') delayHours = 72;
                     else if (item.action_taken === 'retry_now') delayHours = 2;
+                    else if (item.action_taken === 'prompt_update_card' || item.action_taken === 'prompt_update_payment_method') delayHours = 84;
                     
                     const nextDate = new Date(createdDate.getTime() + delayHours * 3600 * 1000);
                     nextRetryTimeStr = nextDate.toLocaleString();
                   } else if (isRecovered) {
                     nextRetryTimeStr = 'Completed (Recovered)';
+                  } else if (item.action_taken === 'prompt_restore_mandate') {
+                    nextRetryTimeStr = 'Restoral Prompt Sent (0 Charge Retries)';
                   } else if (isHalted) {
                     nextRetryTimeStr = 'Halted (Compliance Cap)';
                   }

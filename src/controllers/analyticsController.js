@@ -4,8 +4,8 @@ import { supabase } from '../config/supabase.js';
 export const getComparison = async (req, res) => {
   try {
     const [recoveryRes, naiveRes] = await Promise.all([
-      supabase.from('recovery_actions').select('outcome'),
-      supabase.from('naive_baseline_actions').select('outcome')
+      supabase.from('recovery_actions').select('outcome').limit(10000),
+      supabase.from('naive_baseline_actions').select('outcome').limit(10000)
     ]);
 
     if (recoveryRes.error) {
@@ -50,7 +50,8 @@ export const getBreakdown = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('recovery_actions')
-      .select('predicted_category, action_taken, outcome');
+      .select('predicted_category, action_taken, outcome')
+      .limit(10000);
 
     if (error) {
       return res.status(500).json({ error: error.message });

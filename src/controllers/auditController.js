@@ -60,9 +60,9 @@ export const getAuditTrail = async (req, res) => {
       let delayHours = 24;
       if (actionTaken === 'retry_delayed') delayHours = 72; // 3 days (payday window alignment)
       else if (actionTaken === 'retry_now') delayHours = 2; // 2 hours (transient network recovery)
-      else if (actionTaken === 'prompt_update_card') delayHours = 24; // 1 day
+      else if (actionTaken === 'prompt_update_card' || actionTaken === 'prompt_update_payment_method') delayHours = 84; // 84 hours (3.5 days for card/method update)
 
-      t3 = new Date(t1.getTime() + (delayHours * attemptsUsed) * 3600 * 1000);
+      t3 = new Date(t1.getTime() + delayHours * 3600 * 1000);
       nextRetryISO = t3.toISOString();
     } else if (isRecovered) {
       t3 = new Date(t1.getTime() + 24 * 3600 * 1000); // Recovery executed 1 day after failure
@@ -74,9 +74,11 @@ export const getAuditTrail = async (req, res) => {
     } else if (actionTaken === 'retry_now') {
       retryStrategyWindow = 'Fast Infrastructure Recovery Window (~2 Hours)';
     } else if (actionTaken === 'prompt_update_card') {
-      retryStrategyWindow = 'Customer Method Update Link Prompt';
-    } else if (actionTaken === 'no_action_respect_revoke') {
-      retryStrategyWindow = 'Zero Retries (Customer Mandate Revoked — Compliant Restraint)';
+      retryStrategyWindow = 'Customer Card Update Prompt (Auto-Retry Scheduled in 84 Hours)';
+    } else if (actionTaken === 'prompt_update_payment_method') {
+      retryStrategyWindow = 'Payment Method Switch Prompt (Auto-Retry Scheduled in 84 Hours)';
+    } else if (actionTaken === 'prompt_restore_mandate' || actionTaken === 'no_action_respect_revoke') {
+      retryStrategyWindow = 'Warm Mandate Restoral Message Sent (Zero Automated Charge Retries Executed)';
     } else if (actionTaken === 'stop_max_attempts_reached' || attemptsUsed >= maxAttemptsAllowed) {
       retryStrategyWindow = 'Zero Retries (NPCI 4-Attempt Ceiling Reached)';
     }
@@ -90,14 +92,14 @@ export const getAuditTrail = async (req, res) => {
       event: 'PAYMENT_FAILED',
       timestamp: t1.toISOString(),
       title: 'Initial Payment Attempt Failed',
-      description: `Attempt 1 of ${maxAttemptsAllowed} failed: INR ${(transaction.amount / 100).toFixed(2)} via ${(transaction.method || 'payment').toUpperCase()} failed. Reason: ${transaction.error_reason || 'decline'} (Source: ${transaction.error_source || 'N/A'}).`,
+      description: `Attempt ${attemptsUsed} of ${maxAttemptsAllowed} failed: INR ${(transaction.amount / 100).toFixed(2)} via ${(transaction.method || 'payment').toUpperCase()} failed. Reason: ${transaction.error_reason || 'decline'} (Source: ${transaction.error_source || 'N/A'}).`,
       details: {
         amount: transaction.amount,
         method: transaction.method,
         error_code: transaction.error_code,
         error_reason: transaction.error_reason,
         error_source: transaction.error_source,
-        attempts_used: 1
+        attempts_used: attemptsUsed
       }
     });
 

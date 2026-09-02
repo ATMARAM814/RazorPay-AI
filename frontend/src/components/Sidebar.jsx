@@ -5,7 +5,7 @@ import {
   CreditCard, 
   RefreshCw, 
   FileText, 
-  PieChart, 
+  ClipboardCheck, 
   Settings, 
   RotateCcw,
   Sparkles
@@ -74,7 +74,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
           onClick={() => setActiveTab('audit')} 
           className={`nav-item ${activeTab === 'audit' ? 'active' : ''}`}
         >
-          <PieChart className="w-4 h-4" />
+          <ClipboardCheck className="w-4 h-4" />
           <span>Audit Logs</span>
         </button>
 

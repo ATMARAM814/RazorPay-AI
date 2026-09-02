@@ -112,32 +112,32 @@ export const simulateLivePayment = async (req, res) => {
     let reasoning = 'Standard transient retry scheduled.';
 
     if (errorReason === 'mandate_revoked') {
-      actionTaken = 'no_action_respect_revoke';
-      confidenceScore = 0.99;
-      reasoning = 'Customer mandate revoked. Zero retries enforced for 100% compliance.';
+      actionTaken = 'prompt_restore_mandate';
+      confidenceScore = 0.28; // Realistic 28% recovery rate for voluntary mandate revocation
+      reasoning = 'Mandate revoked by customer. Sent warm SMS/WhatsApp message encouraging customer to restore mandate to continue service without disruption. Zero charge retries executed.';
     } else if (errorReason === 'card_expired') {
       actionTaken = 'prompt_update_card';
-      confidenceScore = 0.92;
-      reasoning = 'Card expired. Prompting customer for updated payment method details.';
+      confidenceScore = 0.48; // Realistic 48% recovery rate requiring manual customer card re-issuance/update
+      reasoning = 'Card expired. Prompted customer to update card details. Auto-retry scheduled after 84 hours.';
     } else if (errorReason === 'card_blocked') {
-      actionTaken = 'prompt_update_card';
-      confidenceScore = 0.90;
-      reasoning = 'Card blocked by issuing bank. Prompting customer for alternate method.';
+      actionTaken = 'prompt_update_payment_method';
+      confidenceScore = 0.38; // Realistic 38% recovery rate requiring customer to switch payment method
+      reasoning = 'Card blocked by issuing bank. Prompted customer via SMS/Email to switch payment method. Auto-retry scheduled after 84 hours.';
     } else if (errorReason === 'insufficient_funds') {
       actionTaken = 'retry_delayed';
-      confidenceScore = 0.96;
+      confidenceScore = 0.78; // Realistic 78% recovery rate during payday/salary window
       const payday = customer.typical_failure_day_of_month || 1;
-      reasoning = `Insufficient funds. Delaying retry to customer's payday window (around day ${payday} of month).`;
+      reasoning = `Insufficient funds. Delaying retry to customer's salary window (around day ${payday} of month).`;
     } else if (errorReason === 'generic_decline') {
       actionTaken = 'retry_now';
-      confidenceScore = 0.88;
-      reasoning = 'Transient network decline. Retrying within 2 hours for fast recovery.';
+      confidenceScore = 0.85; // Realistic 85% recovery rate for transient gateway glitches
+      reasoning = 'Transient network decline. Retrying within 2 hours for fast infrastructure recovery.';
     }
 
     // NPCI Rule: UPI attempt ceiling cap check
     if (method === 'upi' && attemptNumber >= 4) {
       actionTaken = 'stop_max_attempts_reached';
-      confidenceScore = 0.99;
+      confidenceScore = 1.00; // 100% certainty for NPCI hard attempt cap
       reasoning = 'NPCI UPI 4-attempt hard cap reached. Halting further retries.';
     }
 
@@ -146,13 +146,15 @@ export const simulateLivePayment = async (req, res) => {
     // - They are placed in ONGOING RETRIES (outcome = null) with scheduled future retries!
     let outcome = null; // Default to Pending (Ongoing Retry)
 
-    if (actionTaken === 'no_action_respect_revoke' || actionTaken === 'stop_max_attempts_reached') {
+    if (actionTaken === 'stop_max_attempts_reached' || actionTaken === 'no_action_respect_revoke') {
       outcome = 'not_recovered'; // Compliance Stop / Halted
+    } else if (actionTaken === 'prompt_restore_mandate') {
+      outcome = null; // Pending restoral by customer (Zero charge retries executed)
     } else if (actionTaken === 'retry_now') {
       // Fast infrastructure retry (2 hours) can recover
       outcome = Math.random() <= 0.85 ? 'recovered' : 'not_recovered';
     } else {
-      // prompt_update_card and retry_delayed stay ONGOING / PENDING
+      // prompt_update_card, prompt_update_payment_method, retry_delayed stay ONGOING / PENDING
       outcome = null;
     }
 

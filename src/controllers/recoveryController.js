@@ -14,6 +14,8 @@ export const getAllRecoveryActions = async (req, res) => {
       const from = (page - 1) * limit;
       const to = from + limit - 1;
       query = query.range(from, to);
+    } else {
+      query = query.limit(10000);
     }
 
     const { data, count, error } = await query;
