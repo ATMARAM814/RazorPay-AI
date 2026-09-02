@@ -6,31 +6,59 @@ export const getAllRecoveryActions = async (req, res) => {
     const page = parseInt(req.query.page, 10);
     const limit = parseInt(req.query.limit, 10);
 
-    let query = supabase
-      .from('recovery_actions')
-      .select('*, transactions(method, error_reason, amount, status, customer_id, attempt_number, created_at)', { count: 'exact' })
-      .order('created_at', { ascending: false });
-
     if (page && limit && page > 0 && limit > 0) {
       const from = (page - 1) * limit;
       const to = from + limit - 1;
-      query = query.range(from, to);
+      const { data, count, error } = await supabase
+        .from('recovery_actions')
+        .select('*, transactions(method, error_reason, amount, status, customer_id, attempt_number, created_at)', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+
+      return res.status(200).json({
+        data,
+        total: count !== null ? count : (data ? data.length : 0),
+        page,
+        limit
+      });
     } else {
-      query = query.limit(10000);
+      // Chunked fetch to bypass Supabase 1,000-row PostgREST REST API limit and retrieve 100% of all rows
+      const chunkSize = 1000;
+      let allRows = [];
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('recovery_actions')
+          .select('*, transactions(method, error_reason, amount, status, customer_id, attempt_number, created_at)')
+          .order('created_at', { ascending: false })
+          .range(from, from + chunkSize - 1);
+
+        if (error || !data) {
+          console.error('Error fetching recovery_actions chunk:', error);
+          break;
+        }
+
+        allRows = allRows.concat(data);
+        if (data.length < chunkSize) {
+          hasMore = false;
+        } else {
+          from += chunkSize;
+        }
+      }
+
+      return res.status(200).json({
+        data: allRows,
+        total: allRows.length,
+        page: 1,
+        limit: allRows.length
+      });
     }
-
-    const { data, count, error } = await query;
-
-    if (error) {
-      return res.status(500).json({ error: error.message });
-    }
-
-    return res.status(200).json({
-      data,
-      total: count !== null ? count : (data ? data.length : 0),
-      page: page || 1,
-      limit: limit || (data ? data.length : 0)
-    });
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Internal server error' });
   }
