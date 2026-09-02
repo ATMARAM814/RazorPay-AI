@@ -187,13 +187,12 @@ export const RecoveryFeedTable = ({ recoveryActions, onOpenAudit }) => {
               <th>Model-Decided Action</th>
               <th>Confidence</th>
               <th>Status / Outcome</th>
-              <th>Audit</th>
             </tr>
           </thead>
           <tbody>
             {paginatedBatch.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-6 text-slate-400">
+                <td colSpan={7} className="text-center py-6 text-slate-400">
                   No transactions match current filters
                 </td>
               </tr>
@@ -230,14 +229,6 @@ export const RecoveryFeedTable = ({ recoveryActions, onOpenAudit }) => {
                     <td><span className="action-pill">{item.action_taken}</span></td>
                     <td><strong>{((item.confidence_score || 0) * 100).toFixed(0)}%</strong></td>
                     <td>{statusBadge}</td>
-                    <td>
-                      <button 
-                        onClick={() => onOpenAudit(item.transaction_id)}
-                        className="btn btn-secondary btn-sm"
-                      >
-                        <Eye className="w-3.5 h-3.5 mr-1" /> Audit
-                      </button>
-                    </td>
                   </tr>
                 );
               })

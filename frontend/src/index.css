@@ -49,11 +49,11 @@ body {
   min-height: 100vh;
 }
 
-/* Sidebar Styling - Razorpay Standard Dark Navy */
+/* Sidebar Styling - Razorpay Clean Minimal Light Sidebar */
 .sidebar {
   width: 240px;
-  background: #061329;
-  border-right: 1px solid #1e293b;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
   padding: 20px 14px;
   display: flex;
   flex-direction: column;
@@ -69,7 +69,7 @@ body {
   align-items: center;
   gap: 12px;
   padding-bottom: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .logo-icon {
@@ -85,13 +85,13 @@ body {
 .brand-title {
   font-size: 16px;
   font-weight: 700;
-  color: #ffffff;
+  color: #0f172a;
   letter-spacing: -0.01em;
 }
 
 .brand-sub {
   font-size: 11px;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .nav-menu {
@@ -105,7 +105,7 @@ body {
 .nav-section-title {
   font-size: 10px;
   font-weight: 700;
-  color: #64748b;
+  color: #94a3b8;
   letter-spacing: 0.05em;
   margin: 14px 8px 4px 8px;
 }
@@ -115,7 +115,7 @@ body {
   align-items: center;
   gap: 10px;
   padding: 9px 12px;
-  color: #94a3b8;
+  color: #475569;
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
@@ -128,14 +128,15 @@ body {
 }
 
 .nav-item:hover:not(.opacity-60) {
-  background: rgba(255, 255, 255, 0.06);
-  color: #ffffff;
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .nav-item.active {
-  background: var(--primary);
-  color: #ffffff;
+  background: #eff6ff;
+  color: var(--primary);
   font-weight: 600;
+  border-left: 3px solid var(--primary);
 }
 
 /* Main Content Area */
