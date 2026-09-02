@@ -65,16 +65,26 @@ export function App() {
   const dynamicBreakdown = useMemo(() => {
     const validActions = Array.isArray(recoveryActions) ? recoveryActions.flat() : [];
     const map = new Map();
+
+    const categoryPrimaryAction = {
+      insufficient_funds: 'retry_delayed',
+      card_expired: 'prompt_update_card',
+      card_blocked: 'prompt_update_payment_method',
+      mandate_revoked: 'prompt_restore_mandate',
+      generic_decline: 'retry_now',
+      none: 'none',
+      captured: 'none'
+    };
+
     for (const item of validActions) {
       if (!item) continue;
       const category = item.predicted_category || item.transactions?.error_reason || 'unknown';
-      const action = item.action_taken || 'unknown';
-      const key = `${category}:::${action}`;
+      const key = category;
 
       if (!map.has(key)) {
         map.set(key, {
           predicted_category: category,
-          action_taken: action,
+          action_taken: categoryPrimaryAction[category] || item.action_taken || 'retry_now',
           total: 0,
           recovered: 0
         });

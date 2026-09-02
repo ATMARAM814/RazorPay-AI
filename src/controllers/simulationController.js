@@ -210,7 +210,6 @@ export const simulateLivePayment = async (req, res) => {
           // NPCI Rule: UPI attempt ceiling cap check
           if (method === 'upi' && attemptNumber >= 4) {
             actionTaken = 'stop_max_attempts_reached';
-            confidenceScore = 1.00;
             reasoning = 'NPCI UPI 4-attempt hard cap reached. Halting further retries.';
           }
 
