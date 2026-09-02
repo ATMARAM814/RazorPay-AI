@@ -145,14 +145,13 @@ export const AuditLogsPage = ({ recoveryActions }) => {
                 <th>Attempts Used</th>
                 <th>Retries Remaining</th>
                 <th>Next Retry Scheduled</th>
-                <th>Status / Outcome</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {paginatedBatch.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center py-6 text-slate-400">
+                  <td colSpan={8} className="text-center py-6 text-slate-400">
                     No audit logs match current filters
                   </td>
                 </tr>
@@ -185,15 +184,6 @@ export const AuditLogsPage = ({ recoveryActions }) => {
                     nextRetryTimeStr = 'Halted (Compliance Cap)';
                   }
 
-                  let statusBadge = <span className="badge badge-pending">PENDING RETRY</span>;
-                  if (isRecovered) {
-                    statusBadge = <span className="badge badge-recovered">✓ RECOVERED</span>;
-                  } else if (isHalted) {
-                    statusBadge = <span className="badge badge-halted">🛡️ COMPLIANCE STOP</span>;
-                  } else if (item.outcome === 'not_recovered') {
-                    statusBadge = <span className="badge badge-halted">NOT RECOVERED</span>;
-                  }
-
                   return (
                     <tr key={item.transaction_id || item.id}>
                       <td>
@@ -221,7 +211,6 @@ export const AuditLogsPage = ({ recoveryActions }) => {
                       <td className="text-xs text-slate-700">
                         {nextRetryTimeStr}
                       </td>
-                      <td>{statusBadge}</td>
                       <td>
                         <button 
                           onClick={() => handleOpenDetail(item.transaction_id)}
