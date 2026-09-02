@@ -38,8 +38,9 @@ export const getAuditTrail = async (req, res) => {
     const actionTaken = recoveryAction ? recoveryAction.action_taken : 'retry_now';
     const isRecovered = recoveryAction?.outcome === 'recovered';
     
-    // 2. Calculate Attempt Numbers & Retries Allowed
-    const maxAttemptsAllowed = 4; // NPCI UPI Hard Cap
+    // 2. Calculate Attempt Numbers & Retries Allowed dynamically
+    const method = (transaction.method || 'upi').toLowerCase();
+    const maxAttemptsAllowed = method === 'upi' ? 4 : 3; // UPI hard cap is 4, Card/Netbanking hard cap is 3
     let attemptsUsed = transaction.attempt_number || 1;
     if (isRecovered) {
       attemptsUsed = Math.min(attemptsUsed, 2); // 1 Initial Failure + 1 Successful AI Retry
@@ -48,6 +49,7 @@ export const getAuditTrail = async (req, res) => {
     const isHalted = 
       actionTaken === 'no_action_respect_revoke' || 
       actionTaken === 'stop_max_attempts_reached' ||
+      actionTaken === 'prompt_restore_mandate' ||
       attemptsUsed >= maxAttemptsAllowed;
 
     let retriesRemaining = (isRecovered || isHalted) ? 0 : Math.max(0, maxAttemptsAllowed - attemptsUsed);

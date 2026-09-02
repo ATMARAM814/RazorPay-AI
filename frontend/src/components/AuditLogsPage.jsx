@@ -152,11 +152,15 @@ export const AuditLogsPage = ({ recoveryActions }) => {
                   const amountFormatted = `₹${((txn.amount || 0) / 100).toFixed(2)}`;
 
                   const isRecovered = item.outcome === 'recovered';
-                  const isHalted = item.action_taken === 'no_action_respect_revoke' || item.action_taken === 'stop_max_attempts_reached';
+                  const isHalted = 
+                    item.action_taken === 'no_action_respect_revoke' || 
+                    item.action_taken === 'stop_max_attempts_reached' ||
+                    item.action_taken === 'prompt_restore_mandate';
 
-                  // Attempt calculations
-                  const maxAttempts = 4; // NPCI Hard Cap
-                  const attemptsUsed = isRecovered ? 2 : (txn.attempt_number || 1);
+                  // Dynamic Attempt & Retries calculation per payment method
+                  const methodStr = (txn.method || '').toLowerCase();
+                  const maxAttempts = methodStr === 'upi' ? 4 : 3;
+                  const attemptsUsed = txn.attempt_number || 1;
                   const retriesRemaining = (isRecovered || isHalted) ? 0 : Math.max(0, maxAttempts - attemptsUsed);
 
                   // Next Retry Time Calculation
