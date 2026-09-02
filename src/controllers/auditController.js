@@ -130,7 +130,7 @@ export const getAuditTrail = async (req, res) => {
         step: 3,
         event: 'RECOVERY_OUTCOME',
         timestamp: t3 ? t3.toISOString() : t2.toISOString(),
-        title: isRecovered ? `Revenue Recovered (Attempt ${attemptsUsed} of 4)` : 'Recovery Execution Status',
+        title: isRecovered ? `Revenue Recovered (Attempt ${attemptsUsed} of ${maxAttemptsAllowed})` : 'Recovery Execution Status',
         description: isRecovered
           ? `AI Intervention Retry Succeeded: INR ${(transaction.amount / 100).toFixed(2)} recovered.`
           : isHalted
