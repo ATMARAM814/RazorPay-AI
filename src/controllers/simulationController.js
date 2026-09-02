@@ -17,201 +17,239 @@ const getRandomChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
 // Helper for random integer in range [min, max]
 const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-// POST /api/simulate-live — Generate a single live failed payment & simulate AI recovery
+// Helper to shuffle an array
+const shuffleArray = (array) => {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
+// POST /api/simulate-live — Generate 10 live payments per click (6-7 failed, 3-4 captured)
 export const simulateLivePayment = async (req, res) => {
   try {
-    // 1. Pick 1 random existing customer from customer_profiles to reuse real history
+    // 1. Fetch existing customer profiles to reuse real customer history
     const { data: customers, error: customerErr } = await supabase
       .from('customer_profiles')
       .select('*')
-      .limit(50);
+      .limit(100);
 
     if (customerErr || !customers || customers.length === 0) {
       return res.status(500).json({ error: 'Failed to fetch customer profiles for simulation' });
     }
 
-    const customer = getRandomChoice(customers);
-    const customerId = customer.customer_id;
+    // 2. Decide counts: 6-7 failed, 3-4 captured (total = 10)
+    const numFailed = getRandomChoice([6, 7]);
+    const numCaptured = 10 - numFailed;
 
-    // 2. Generate random failed transaction attributes
-    const amount = getRandomInt(4900, 99900); // Amount in paise (₹49.00 to ₹999.00)
-    
-    // Method weights: upi 58%, card 27%, netbanking 15%
-    const method = getRandomWeighted([
-      { value: 'upi', weight: 0.58 },
-      { value: 'card', weight: 0.27 },
-      { value: 'netbanking', weight: 0.15 }
-    ]);
+    const specs = [
+      ...Array(numFailed).fill('failed'),
+      ...Array(numCaptured).fill('captured')
+    ];
+    const shuffledSpecs = shuffleArray(specs);
 
-    const bankCode = getRandomChoice(['HDFC', 'ICIC', 'SBIN', 'AXIS', 'KKBK', 'UTIB']);
-    const cardNetwork = method === 'card' ? getRandomChoice(['visa', 'mastercard', 'rupay']) : null;
+    const generatedItems = [];
+    const baseTime = Date.now();
 
-    // ENFORCE STRICT LOGICAL CONSISTENCY BETWEEN METHOD AND ERROR_REASON
-    let errorReasonOptions = [];
-    if (method === 'upi') {
-      errorReasonOptions = [
-        { value: 'insufficient_funds', weight: 0.50 },
-        { value: 'mandate_revoked', weight: 0.25 },
-        { value: 'generic_decline', weight: 0.25 }
-      ];
-    } else if (method === 'card') {
-      errorReasonOptions = [
-        { value: 'card_expired', weight: 0.35 },
-        { value: 'card_blocked', weight: 0.35 },
-        { value: 'insufficient_funds', weight: 0.15 },
-        { value: 'generic_decline', weight: 0.15 }
-      ];
-    } else {
-      // Netbanking
-      errorReasonOptions = [
-        { value: 'insufficient_funds', weight: 0.60 },
-        { value: 'generic_decline', weight: 0.40 }
-      ];
-    }
+    // Generate 10 transactions sequentially with staggered timestamps
+    for (let i = 0; i < 10; i++) {
+      const isFailedSpec = shuffledSpecs[i] === 'failed';
+      const customer = getRandomChoice(customers);
+      const customerId = customer.customer_id;
+      const amount = getRandomInt(4900, 99900); // ₹49.00 to ₹999.00 in paise
 
-    const errorReason = getRandomWeighted(errorReasonOptions);
+      // Method weights: upi 58%, card 27%, netbanking 15%
+      const method = getRandomWeighted([
+        { value: 'upi', weight: 0.58 },
+        { value: 'card', weight: 0.27 },
+        { value: 'netbanking', weight: 0.15 }
+      ]);
 
-    // Derive error_source
-    let errorSource = 'customer';
-    if (errorReason === 'card_blocked') errorSource = 'bank';
-    else if (errorReason === 'generic_decline') errorSource = 'network';
+      const bankCode = getRandomChoice(['HDFC', 'ICIC', 'SBIN', 'AXIS', 'KKBK', 'UTIB']);
+      const cardNetwork = method === 'card' ? getRandomChoice(['visa', 'mastercard', 'rupay']) : null;
+      const timestamp = new Date(baseTime + (10 - i) * 1000).toISOString();
 
-    const mandateStatus = errorReason === 'mandate_revoked' ? 'revoked' : 'active';
-    const attemptNumber = getRandomInt(1, 3);
-    const createdAt = new Date().toISOString();
+      if (!isFailedSpec) {
+        // === SUCCESSFUL / CAPTURED TRANSACTION (No diagnosis needed) ===
+        const newTxnPayload = {
+          customer_id: customerId,
+          amount,
+          method,
+          bank_code: bankCode,
+          card_network: cardNetwork,
+          error_reason: null,
+          error_source: null,
+          mandate_status: 'active',
+          attempt_number: 1,
+          status: 'captured',
+          created_at: timestamp
+        };
 
-    // 3. Insert transaction into Supabase
-    const newTxnPayload = {
-      customer_id: customerId,
-      amount,
-      method,
-      bank_code: bankCode,
-      card_network: cardNetwork,
-      error_reason: errorReason,
-      error_source: errorSource,
-      mandate_status: mandateStatus,
-      attempt_number: attemptNumber,
-      status: 'failed',
-      created_at: createdAt
-    };
+        const { data: insertedTxn, error: txnErr } = await supabase
+          .from('transactions')
+          .insert([newTxnPayload])
+          .select()
+          .single();
 
-    const { data: insertedTxn, error: insertTxnErr } = await supabase
-      .from('transactions')
-      .insert([newTxnPayload])
-      .select()
-      .single();
+        if (!txnErr && insertedTxn) {
+          const actionResult = {
+            id: `cap_${insertedTxn.id}`,
+            transaction_id: insertedTxn.id,
+            predicted_category: 'none',
+            action_taken: 'none',
+            confidence_score: 1.0,
+            reasoning: 'Payment captured successfully on initial attempt. No recovery intervention needed.',
+            outcome: 'captured',
+            created_at: timestamp,
+            is_live_demo: true,
+            transactions: {
+              ...insertedTxn,
+              is_live_demo: true
+            }
+          };
 
-    if (insertTxnErr || !insertedTxn) {
-      return res.status(500).json({ error: `Failed to insert transaction: ${insertTxnErr?.message}` });
-    }
+          generatedItems.push(actionResult);
+        }
+      } else {
+        // === FAILED TRANSACTION (Diagnose -> Decide -> Recovery Action) ===
+        // STRICT METHOD-TO-ERROR_REASON MAPPING:
+        // upi: ONLY insufficient_funds, mandate_revoked, generic_decline (NO card_expired/card_blocked!)
+        // card: card_expired, card_blocked, insufficient_funds, generic_decline
+        // netbanking: insufficient_funds, generic_decline
+        let errorReasonOptions = [];
+        if (method === 'upi') {
+          errorReasonOptions = [
+            { value: 'insufficient_funds', weight: 0.50 },
+            { value: 'mandate_revoked', weight: 0.25 },
+            { value: 'generic_decline', weight: 0.25 }
+          ];
+        } else if (method === 'card') {
+          errorReasonOptions = [
+            { value: 'card_expired', weight: 0.35 },
+            { value: 'card_blocked', weight: 0.35 },
+            { value: 'insufficient_funds', weight: 0.15 },
+            { value: 'generic_decline', weight: 0.15 }
+          ];
+        } else {
+          errorReasonOptions = [
+            { value: 'insufficient_funds', weight: 0.60 },
+            { value: 'generic_decline', weight: 0.40 }
+          ];
+        }
 
-    // 4. Decision Engine logic
-    let predictedCategory = errorReason;
-    let actionTaken = 'retry_now';
-    let confidenceScore = 0.88;
-    let reasoning = 'Standard transient retry scheduled.';
+        const errorReason = getRandomWeighted(errorReasonOptions);
 
-    if (errorReason === 'mandate_revoked') {
-      actionTaken = 'prompt_restore_mandate';
-      confidenceScore = 0.28; // Realistic 28% recovery rate for voluntary mandate revocation
-      reasoning = 'Mandate revoked by customer. Sent warm SMS/WhatsApp message encouraging customer to restore mandate to continue service without disruption. Zero charge retries executed.';
-    } else if (errorReason === 'card_expired') {
-      actionTaken = 'prompt_update_card';
-      confidenceScore = 0.48; // Realistic 48% recovery rate requiring manual customer card re-issuance/update
-      reasoning = 'Card expired. Prompted customer to update card details. Auto-retry scheduled after 84 hours.';
-    } else if (errorReason === 'card_blocked') {
-      actionTaken = 'prompt_update_payment_method';
-      confidenceScore = 0.38; // Realistic 38% recovery rate requiring customer to switch payment method
-      reasoning = 'Card blocked by issuing bank. Prompted customer via SMS/Email to switch payment method. Auto-retry scheduled after 84 hours.';
-    } else if (errorReason === 'insufficient_funds') {
-      actionTaken = 'retry_delayed';
-      confidenceScore = 0.78; // Realistic 78% recovery rate during payday/salary window
-      const payday = customer.typical_failure_day_of_month || 1;
-      reasoning = `Insufficient funds. Delaying retry to customer's salary window (around day ${payday} of month).`;
-    } else if (errorReason === 'generic_decline') {
-      actionTaken = 'retry_now';
-      confidenceScore = 0.85; // Realistic 85% recovery rate for transient gateway glitches
-      reasoning = 'Transient network decline. Retrying within 2 hours for fast infrastructure recovery.';
-    }
+        let errorSource = 'customer';
+        if (errorReason === 'card_blocked') errorSource = 'bank';
+        else if (errorReason === 'generic_decline') errorSource = 'network';
 
-    // NPCI Rule: UPI attempt ceiling cap check
-    if (method === 'upi' && attemptNumber >= 4) {
-      actionTaken = 'stop_max_attempts_reached';
-      confidenceScore = 1.00; // 100% certainty for NPCI hard attempt cap
-      reasoning = 'NPCI UPI 4-attempt hard cap reached. Halting further retries.';
-    }
+        const mandateStatus = errorReason === 'mandate_revoked' ? 'revoked' : 'active';
+        const attemptNumber = method === 'upi' ? getRandomInt(1, 4) : getRandomInt(1, 3);
 
-    // 5. REALISTIC OUTCOME SIMULATION:
-    // - prompt_update_card & retry_delayed do NOT recover immediately in 1 second!
-    // - They are placed in ONGOING RETRIES (outcome = null) with scheduled future retries!
-    let outcome = null; // Default to Pending (Ongoing Retry)
+        const newTxnPayload = {
+          customer_id: customerId,
+          amount,
+          method,
+          bank_code: bankCode,
+          card_network: cardNetwork,
+          error_reason: errorReason,
+          error_source: errorSource,
+          mandate_status: mandateStatus,
+          attempt_number: attemptNumber,
+          status: 'failed',
+          created_at: timestamp
+        };
 
-    if (actionTaken === 'stop_max_attempts_reached' || actionTaken === 'no_action_respect_revoke') {
-      outcome = 'not_recovered'; // Compliance Stop / Halted
-    } else if (actionTaken === 'prompt_restore_mandate') {
-      outcome = null; // Pending restoral by customer (Zero charge retries executed)
-    } else if (actionTaken === 'retry_now') {
-      // Fast infrastructure retry (2 hours) can recover
-      outcome = Math.random() <= 0.85 ? 'recovered' : 'not_recovered';
-    } else {
-      // prompt_update_card, prompt_update_payment_method, retry_delayed stay ONGOING / PENDING
-      outcome = null;
-    }
+        const { data: insertedTxn, error: txnErr } = await supabase
+          .from('transactions')
+          .insert([newTxnPayload])
+          .select()
+          .single();
 
-    // 6. Insert into recovery_actions table
-    const newActionPayload = {
-      transaction_id: insertedTxn.id,
-      predicted_category: predictedCategory,
-      action_taken: actionTaken,
-      confidence_score: confidenceScore,
-      reasoning,
-      outcome,
-      created_at: new Date(new Date(createdAt).getTime() + 60000).toISOString()
-    };
+        if (!txnErr && insertedTxn) {
+          // Decision Engine logic
+          let predictedCategory = errorReason;
+          let actionTaken = 'retry_now';
+          let confidenceScore = 0.85;
+          let reasoning = 'Standard transient retry scheduled.';
 
-    const { data: insertedAction, error: actionErr } = await supabase
-      .from('recovery_actions')
-      .insert([newActionPayload])
-      .select()
-      .single();
+          if (errorReason === 'mandate_revoked') {
+            actionTaken = 'prompt_restore_mandate';
+            confidenceScore = 0.28;
+            reasoning = 'Mandate revoked by customer. Sent warm SMS/WhatsApp message encouraging customer to restore mandate to continue service without disruption. Zero charge retries executed.';
+          } else if (errorReason === 'card_expired') {
+            actionTaken = 'prompt_update_card';
+            confidenceScore = 0.48;
+            reasoning = 'Card expired. Prompted customer to update card details. Auto-retry scheduled after 84 hours.';
+          } else if (errorReason === 'card_blocked') {
+            actionTaken = 'prompt_update_payment_method';
+            confidenceScore = 0.38;
+            reasoning = 'Card blocked by issuing bank. Prompted customer via SMS/Email to switch payment method. Auto-retry scheduled after 84 hours.';
+          } else if (errorReason === 'insufficient_funds') {
+            actionTaken = 'retry_delayed';
+            confidenceScore = 0.78;
+            const payday = customer.typical_failure_day_of_month || 1;
+            reasoning = `Insufficient funds. Delaying retry to customer's salary window (around day ${payday} of month).`;
+          } else if (errorReason === 'generic_decline') {
+            actionTaken = 'retry_now';
+            confidenceScore = 0.85;
+            reasoning = 'Transient network decline. Retrying within 2 hours for fast infrastructure recovery.';
+          }
 
-    if (actionErr || !insertedAction) {
-      return res.status(500).json({ error: `Failed to record recovery action: ${actionErr?.message}` });
-    }
+          // NPCI Rule: UPI attempt ceiling cap check
+          if (method === 'upi' && attemptNumber >= 4) {
+            actionTaken = 'stop_max_attempts_reached';
+            confidenceScore = 1.00;
+            reasoning = 'NPCI UPI 4-attempt hard cap reached. Halting further retries.';
+          }
 
-    // Attach transaction relation & live demo tag for unified frontend feed object
-    const fullActionResult = {
-      ...insertedAction,
-      is_live_demo: true,
-      transactions: {
-        ...insertedTxn,
-        is_live_demo: true
+          // Outcome simulation
+          let outcome = null;
+          if (actionTaken === 'stop_max_attempts_reached' || actionTaken === 'no_action_respect_revoke') {
+            outcome = 'not_recovered';
+          } else if (actionTaken === 'prompt_restore_mandate') {
+            outcome = null;
+          } else if (actionTaken === 'retry_now') {
+            outcome = Math.random() <= 0.85 ? 'recovered' : 'not_recovered';
+          } else {
+            outcome = null;
+          }
+
+          const newActionPayload = {
+            transaction_id: insertedTxn.id,
+            predicted_category: predictedCategory,
+            action_taken: actionTaken,
+            confidence_score: confidenceScore,
+            reasoning,
+            outcome,
+            created_at: new Date(new Date(timestamp).getTime() + 5000).toISOString()
+          };
+
+          const { data: insertedAction } = await supabase
+            .from('recovery_actions')
+            .insert([newActionPayload])
+            .select()
+            .single();
+
+          if (insertedAction) {
+            generatedItems.push({
+              ...insertedAction,
+              is_live_demo: true,
+              transactions: {
+                ...insertedTxn,
+                is_live_demo: true
+              }
+            });
+          }
+        }
       }
-    };
+    }
 
     return res.status(200).json({
       success: true,
-      data: {
-        transaction: {
-          ...insertedTxn,
-          is_live_demo: true
-        },
-        customer_profile: {
-          customer_id: customer.customer_id,
-          total_past_failures: customer.total_past_failures || getRandomInt(1, 6),
-          total_past_successes: customer.total_past_successes || getRandomInt(3, 12),
-          typical_failure_day_of_month: customer.typical_failure_day_of_month || getRandomInt(1, 5)
-        },
-        recovery_action: fullActionResult,
-        simulation_details: {
-          diagnosed_cause: predictedCategory,
-          action_taken: actionTaken,
-          confidence_score: confidenceScore,
-          reasoning,
-          outcome,
-          is_ongoing: !outcome && actionTaken !== 'no_action_respect_revoke' && actionTaken !== 'stop_max_attempts_reached'
-        }
-      }
+      data: generatedItems
     });
   } catch (err) {
     console.error('Error in simulateLivePayment:', err);

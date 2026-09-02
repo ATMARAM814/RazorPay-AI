@@ -28,7 +28,7 @@ export const TopHeader = ({ activeTab, onSimulate, isSimulating, onRefresh, isRe
             className="btn btn-primary"
           >
             <Sparkles className={`w-4 h-4 ${isSimulating ? 'animate-spin' : ''}`} />
-            <span>{isSimulating ? 'Simulating...' : 'Simulate New Failed Payment'}</span>
+            <span>{isSimulating ? 'Simulating Batch...' : 'Simulate 10 Payments Batch'}</span>
           </button>
         )}
 

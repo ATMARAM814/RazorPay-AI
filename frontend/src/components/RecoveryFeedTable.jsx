@@ -201,9 +201,13 @@ export const RecoveryFeedTable = ({ recoveryActions, onOpenAudit }) => {
                 const txn = item.transactions || {};
                 const amountFormatted = `₹${((txn.amount || 0) / 100).toFixed(2)}`;
 
-                let statusBadge = <span className="badge badge-pending">PENDING RETRY</span>;
-                if (item.outcome === 'recovered') {
+                let statusBadge = <span className="badge badge-pending">ONGOING RETRY</span>;
+                if (txn.status === 'captured' || item.outcome === 'captured') {
+                  statusBadge = <span className="badge badge-recovered bg-emerald-100 text-emerald-800 border-emerald-300">✓ CAPTURED</span>;
+                } else if (item.outcome === 'recovered') {
                   statusBadge = <span className="badge badge-recovered">✓ RECOVERED</span>;
+                } else if (item.action_taken === 'prompt_restore_mandate') {
+                  statusBadge = <span className="badge badge-halted bg-amber-100 text-amber-800 border-amber-300">MANDATE RESTORAL</span>;
                 } else if (item.action_taken === 'no_action_respect_revoke' || item.action_taken === 'stop_max_attempts_reached') {
                   statusBadge = <span className="badge badge-halted">🛡️ COMPLIANCE STOP</span>;
                 } else if (item.outcome === 'not_recovered') {
